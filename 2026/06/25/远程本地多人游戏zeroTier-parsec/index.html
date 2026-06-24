@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 7.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha256-dABdfBfUoC8vJUBOwGVdm8L9qlMWaHTIfXt+7GnZCIo=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"retr67.github.io","root":"/","images":"/images","scheme":"Muse","darkmode":false,"version":"8.22.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="第一部分：云服务器配置（搭建 Moon 中转节点）1.租一台有公网 IP 的云服务器（推荐阿里云，最便宜有公网IP就行，系统选 Ubuntu）。 2.连接服务器：登录服务器，依次执行以下命令：     # 安装 ZeroTier     curl -s https:&#x2F;&#x2F;install.zerotier.com | sudo bash     # 进入 ZeroTier 配置目录     cd &amp;#">
+<meta property="og:type" content="article">
+<meta property="og:title" content="远程本地多人游戏zeroTier+parsec">
+<meta property="og:url" content="https://retr67.github.io/2026/06/25/%E8%BF%9C%E7%A8%8B%E6%9C%AC%E5%9C%B0%E5%A4%9A%E4%BA%BA%E6%B8%B8%E6%88%8FzeroTier-parsec/index.html">
+<meta property="og:site_name" content="Retr67的小站">
+<meta property="og:description" content="第一部分：云服务器配置（搭建 Moon 中转节点）1.租一台有公网 IP 的云服务器（推荐阿里云，最便宜有公网IP就行，系统选 Ubuntu）。 2.连接服务器：登录服务器，依次执行以下命令：     # 安装 ZeroTier     curl -s https:&#x2F;&#x2F;install.zerotier.com | sudo bash     # 进入 ZeroTier 配置目录     cd &amp;#">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-06-24T17:09:05.000Z">
+<meta property="article:modified_time" content="2026-06-24T17:20:33.125Z">
+<meta property="article:author" content="Retr67">
+<meta property="article:tag" content="技术">
+<meta property="article:tag" content="服务器">
+<meta property="article:tag" content="本地多人游戏">
+<meta property="article:tag" content="远程本地联机">
+<meta property="article:tag" content="zeroTier">
+<meta property="article:tag" content="parsec">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://retr67.github.io/2026/06/25/%E8%BF%9C%E7%A8%8B%E6%9C%AC%E5%9C%B0%E5%A4%9A%E4%BA%BA%E6%B8%B8%E6%88%8FzeroTier-parsec/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://retr67.github.io/2026/06/25/%E8%BF%9C%E7%A8%8B%E6%9C%AC%E5%9C%B0%E5%A4%9A%E4%BA%BA%E6%B8%B8%E6%88%8FzeroTier-parsec/","path":"2026/06/25/远程本地多人游戏zeroTier-parsec/","title":"远程本地多人游戏zeroTier+parsec"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>远程本地多人游戏zeroTier+parsec | Retr67的小站</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Retr67的小站</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86%EF%BC%9A%E4%BA%91%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%85%8D%E7%BD%AE%EF%BC%88%E6%90%AD%E5%BB%BA-Moon-%E4%B8%AD%E8%BD%AC%E8%8A%82%E7%82%B9%EF%BC%89"><span class="nav-number">1.</span> <span class="nav-text">第一部分：云服务器配置（搭建 Moon 中转节点）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86%EF%BC%9A%E6%9C%AC%E5%9C%B0%E8%A2%AB%E6%8E%A7%E7%94%B5%E8%84%91%E9%85%8D%E7%BD%AE"><span class="nav-number">2.</span> <span class="nav-text">第二部分：本地被控电脑配置</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E9%83%A8%E5%88%86%EF%BC%9A%E4%BD%A0%E7%9A%84%E6%9C%8B%E5%8F%8B%EF%BC%88%E6%8E%A7%E5%88%B6%E7%AB%AF%EF%BC%89"><span class="nav-number"></span> <span class="nav-text">第三部分：你的朋友（控制端）</span></a></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Retr67</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">45</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">80</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://retr67.github.io/2026/06/25/%E8%BF%9C%E7%A8%8B%E6%9C%AC%E5%9C%B0%E5%A4%9A%E4%BA%BA%E6%B8%B8%E6%88%8FzeroTier-parsec/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Retr67">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Retr67的小站">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="远程本地多人游戏zeroTier+parsec | Retr67的小站">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          远程本地多人游戏zeroTier+parsec
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-06-25 01:09:05 / 修改时间：01:20:33" itemprop="dateCreated datePublished" datetime="2026-06-25T01:09:05+08:00">2026-06-25</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h3 id="第一部分：云服务器配置（搭建-Moon-中转节点）"><a href="#第一部分：云服务器配置（搭建-Moon-中转节点）" class="headerlink" title="第一部分：云服务器配置（搭建 Moon 中转节点）"></a>第一部分：云服务器配置（搭建 Moon 中转节点）</h3><p><strong>1.租一台有公网 IP 的云服务器</strong>（推荐阿里云，最便宜有公网IP就行，系统选 Ubuntu）。</p>
+<p><strong>2.连接服务器</strong>：登录服务器，依次执行以下命令：</p>
+<p>    # 安装 ZeroTier</p>
+<p>    curl -s <a target="_blank" rel="noopener" href="https://install.zerotier.com/">https://install.zerotier.com</a> | sudo bash</p>
+<p>    # 进入 ZeroTier 配置目录</p>
+<p>    cd &#x2F;var&#x2F;lib&#x2F;zerotier-one</p>
+<p>    # 生成 moon.json 配置文件</p>
+<p>    sudo zerotier-idtool initmoon identity.public &gt; moon.json</p>
+<p>    # 编辑 moon.json，找到 “stableEndpoints”: [] 这一行，改成你的服务器公网 IP</p>
+<p>    sudo vi moon.json</p>
+<p>    # 示例：”stableEndpoints”: [“123.123.123.123&#x2F;9993”]</p>
+<p>    # 根据 moon.json 生成 .moon 签名文件</p>
+<p>    sudo zerotier-idtool genmoon moon.json</p>
+<p>    # 创建 moons.d 目录并移动文件</p>
+<p>    sudo mkdir -p moons.d</p>
+<p>    sudo mv *.moon moons.d&#x2F;</p>
+<p>    # 重启 ZeroTier 服务</p>
+<p>    sudo systemctl restart zerotier-one</p>
+<p>3.<strong>记下服务器的 Node ID</strong>：执行 <code>sudo zerotier-cli status</code>，查看Node ID（例如 <code>12abcdef34</code>）。</p>
+<h3 id="第二部分：本地被控电脑配置"><a href="#第二部分：本地被控电脑配置" class="headerlink" title="第二部分：本地被控电脑配置"></a>第二部分：本地被控电脑配置</h3><ol>
+<li><strong>安装 ZeroTier 客户端</strong>（官网下载）。</li>
+<li><strong>加入你创建的虚拟网络</strong>：<ol>
+<li>在 ZeroTier 官网创建 Network，获得 16 位 Network ID。</li>
+<li>你的电脑上右键 ZeroTier 图标 → <strong>Join Network</strong> → 输入 Network ID。</li>
+</ol>
+</li>
+<li><strong>添加 Moon 节点</strong>（让你的电脑优先通过你的服务器寻找朋友）：<ol>
+<li>以管理员身份打开命令提示符，进入 ZeroTier 安装目录（默认 <code>C:\Program Files (x86)\ZeroTier\One\</code>）。</li>
+<li>执行：<code>zerotier-cli orbit &lt;你的服务器NodeID&gt; &lt;你的服务器NodeID&gt;</code>（两次输入相同 ID）。</li>
+</ol>
+</li>
+<li><strong>在 ZeroTier 官网授权</strong>：将你和朋友的设备都勾选允许加入网络。</li>
+<li><strong>安装 Parsec</strong>，登录账号，并确保你的电脑设置为 <strong>“主机”（Host）</strong> 模式（默认就是）。</li>
+<li>（可选）设置网络优先级，让 Parsec 优先走 ZeroTier 虚拟网卡。<ol>
+<li>按下键盘上的 <code>Win</code> + <code>R</code> 键，在弹出的“运行”对话框中输入 <code>ncpa.cpl</code>，然后点击“确定”。</li>
+<li>在打开的“网络连接”窗口中，找到名为 <strong><code>ZeroTier One</code></strong> 的虚拟网卡。右键点击它，选择 <strong>“属性”</strong>。</li>
+<li>在弹出的属性窗口中：<ul>
+<li><p>找到并双击 **&#96;Internet 协议版本 4 (TCP&#x2F;IPv4)。</p>
+</li>
+<li><p>在新窗口中，点击下方的 <strong>“高级”</strong> 按钮。</p>
+</li>
+</ul>
+</li>
+<li><strong>修改接口跃点数</strong><ol>
+<li>在“高级TCP&#x2F;IP设置”窗口中，<strong>取消勾选</strong>“<strong>自动跃点</strong>”。</li>
+<li>在“<strong>接口跃点数</strong>”输入框中，手动输入一个很小的数字，比如 <strong><code>1</code></strong>。</li>
+<li>点击“确定”保存设置。</li>
+</ol>
+</li>
+<li><strong>重启电脑</strong></li>
+</ol>
+</li>
+</ol>
+<h2 id="第三部分：你的朋友（控制端）"><a href="#第三部分：你的朋友（控制端）" class="headerlink" title="第三部分：你的朋友（控制端）"></a>第三部分：你的朋友（控制端）</h2><ol>
+<li><strong>安装 ZeroTier 客户端</strong>。</li>
+<li><strong>加入同一个虚拟网络</strong>：输入你提供的 <strong>Network ID</strong>。</li>
+<li><strong>添加同一个 Moon 节点</strong>：<ol>
+<li>同样以管理员身份打开命令提示符，进入 ZeroTier 安装目录。</li>
+<li>执行：<code>zerotier-cli orbit &lt;你的服务器NodeID&gt; &lt;你的服务器NodeID&gt;</code>（和之前执行的命令完全一样）。</li>
+</ol>
+</li>
+<li><strong>安装 Parsec</strong>，登录同一个账号（或互加好友）。</li>
+<li><strong>连接你的电脑</strong>：在 Parsec 界面中，你的电脑会出现在列表中，点击即可远程连接并开始联机。</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/%E6%8A%80%E6%9C%AF/" rel="tag"># 技术</a>
+              <a href="/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/" rel="tag"># 服务器</a>
+              <a href="/tags/%E6%9C%AC%E5%9C%B0%E5%A4%9A%E4%BA%BA%E6%B8%B8%E6%88%8F/" rel="tag"># 本地多人游戏</a>
+              <a href="/tags/%E8%BF%9C%E7%A8%8B%E6%9C%AC%E5%9C%B0%E8%81%94%E6%9C%BA/" rel="tag"># 远程本地联机</a>
+              <a href="/tags/zeroTier/" rel="tag"># zeroTier</a>
+              <a href="/tags/parsec/" rel="tag"># parsec</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/06/21/%E8%8C%B6%E6%9D%AF%E5%A4%B4/" rel="prev" title="茶杯头">
+                  <i class="fa fa-angle-left"></i> 茶杯头
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Retr67</span>
+  </div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/muse/" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/sidebar.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

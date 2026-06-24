@@ -1,3 +1,4 @@
+https://retr67.github.io/2026/06/25/%E8%BF%9C%E7%A8%8B%E6%9C%AC%E5%9C%B0%E5%A4%9A%E4%BA%BA%E6%B8%B8%E6%88%8FzeroTier-parsec/
 https://retr67.github.io/2026/06/21/%E8%8C%B6%E6%9D%AF%E5%A4%B4/
 https://retr67.github.io/2026/06/21/%E6%9D%80%E6%88%AE%E5%B0%96%E5%A1%942/
 https://retr67.github.io/2026/06/21/%E8%8A%82%E5%A5%8F%E5%8C%BB%E7%94%9F/
@@ -119,3 +120,8 @@ https://retr67.github.io/tags/%E9%9F%B3%E4%B9%90%E6%B8%B8%E6%88%8F/
 https://retr67.github.io/tags/%E8%8A%82%E5%A5%8F%E6%B8%B8%E6%88%8F/
 https://retr67.github.io/tags/%E5%BC%B9%E5%B9%95%E6%B8%B8%E6%88%8F/
 https://retr67.github.io/tags/%E6%A8%AA%E6%9D%BF%E5%8A%A8%E4%BD%9C%E6%B8%B8%E6%88%8F/
+https://retr67.github.io/tags/%E6%9C%8D%E5%8A%A1%E5%99%A8/
+https://retr67.github.io/tags/%E6%9C%AC%E5%9C%B0%E5%A4%9A%E4%BA%BA%E6%B8%B8%E6%88%8F/
+https://retr67.github.io/tags/%E8%BF%9C%E7%A8%8B%E6%9C%AC%E5%9C%B0%E8%81%94%E6%9C%BA/
+https://retr67.github.io/tags/zeroTier/
+https://retr67.github.io/tags/parsec/
