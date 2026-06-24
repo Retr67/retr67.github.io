@@ -27,7 +27,7 @@
 <meta property="og:description" content="第一部分：云服务器配置（搭建 Moon 中转节点）1.租一台有公网 IP 的云服务器（推荐阿里云，最便宜有公网IP就行，系统选 Ubuntu）。 2.连接服务器：登录服务器，依次执行以下命令： 12345678910111213141516171819202122232425262728293031    # 安装 ZeroTier    curl -s https:&#x2F;&#x2F;install.zerot">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-06-24T17:09:05.000Z">
-<meta property="article:modified_time" content="2026-06-24T17:37:26.779Z">
+<meta property="article:modified_time" content="2026-06-24T17:43:59.795Z">
 <meta property="article:author" content="Retr67">
 <meta property="article:tag" content="技术">
 <meta property="article:tag" content="服务器">
@@ -116,7 +116,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86%EF%BC%9A%E4%BA%91%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%85%8D%E7%BD%AE%EF%BC%88%E6%90%AD%E5%BB%BA-Moon-%E4%B8%AD%E8%BD%AC%E8%8A%82%E7%82%B9%EF%BC%89"><span class="nav-number">1.</span> <span class="nav-text">第一部分：云服务器配置（搭建 Moon 中转节点）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86%EF%BC%9A%E6%9C%AC%E5%9C%B0%E8%A2%AB%E6%8E%A7%E7%94%B5%E8%84%91%E9%85%8D%E7%BD%AE"><span class="nav-number">2.</span> <span class="nav-text">第二部分：本地被控电脑配置</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E9%83%A8%E5%88%86%EF%BC%9A%E4%BD%A0%E7%9A%84%E6%9C%8B%E5%8F%8B%EF%BC%88%E6%8E%A7%E5%88%B6%E7%AB%AF%EF%BC%89"><span class="nav-number"></span> <span class="nav-text">第三部分：你的朋友（控制端）</span></a></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%B8%80%E9%83%A8%E5%88%86%EF%BC%9A%E4%BA%91%E6%9C%8D%E5%8A%A1%E5%99%A8%E9%85%8D%E7%BD%AE%EF%BC%88%E6%90%AD%E5%BB%BA-Moon-%E4%B8%AD%E8%BD%AC%E8%8A%82%E7%82%B9%EF%BC%89"><span class="nav-number">1.</span> <span class="nav-text">第一部分：云服务器配置（搭建 Moon 中转节点）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%BA%8C%E9%83%A8%E5%88%86%EF%BC%9A%E6%9C%AC%E5%9C%B0%E8%A2%AB%E6%8E%A7%E7%94%B5%E8%84%91%E9%85%8D%E7%BD%AE"><span class="nav-number">2.</span> <span class="nav-text">第二部分：本地被控电脑配置</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AC%AC%E4%B8%89%E9%83%A8%E5%88%86%EF%BC%9A%E4%BD%A0%E7%9A%84%E6%9C%8B%E5%8F%8B%EF%BC%88%E6%8E%A7%E5%88%B6%E7%AB%AF%EF%BC%89"><span class="nav-number">3.</span> <span class="nav-text">第三部分：你的朋友（控制端）</span></a></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -192,7 +192,7 @@
       <span class="post-meta-item-text">发表于</span>
       
 
-      <time title="创建时间：2026-06-25 01:09:05 / 修改时间：01:37:26" itemprop="dateCreated datePublished" datetime="2026-06-25T01:09:05+08:00">2026-06-25</time>
+      <time title="创建时间：2026-06-25 01:09:05 / 修改时间：01:43:59" itemprop="dateCreated datePublished" datetime="2026-06-25T01:09:05+08:00">2026-06-25</time>
     </span>
 
   
@@ -233,28 +233,26 @@
 <li><p>按下键盘上的 <code>Win</code> + <code>R</code> 键，在弹出的“运行”对话框中输入 <code>ncpa.cpl</code>，然后点击“确定”。</p>
 </li>
 <li><p>在打开的“网络连接”窗口中，找到名为 <strong><code>ZeroTier One</code></strong> 的虚拟网卡。右键点击它，选择 <strong>“属性”</strong>。</p>
-</li>
+<ol>
 <li><p>在弹出的属性窗口中：</p>
-<ul>
-<li><p>找到并双击 **&#96;Internet 协议版本 4 (TCP&#x2F;IPv4)。</p>
+<p>    找到并双击 Internet 协议版本 4 (TCP&#x2F;IPv4)。</p>
+<p>    在新窗口中，点击下方的 <strong>“高级”</strong> 按钮。</p>
 </li>
-<li><p>在新窗口中，点击下方的 <strong>“高级”</strong> 按钮。</p>
+</ol>
 </li>
-</ul>
-</li>
-<li><p><strong>修改接口跃点数</strong></p>
+<li><p>修改接口跃点数</p>
 <ol>
 <li>在“高级TCP&#x2F;IP设置”窗口中，<strong>取消勾选</strong>“<strong>自动跃点</strong>”。</li>
 <li>在“<strong>接口跃点数</strong>”输入框中，手动输入一个很小的数字，比如 <strong><code>1</code></strong>。</li>
 <li>点击“确定”保存设置。</li>
 </ol>
 </li>
-<li><p><strong>重启电脑</strong></p>
+<li><p>重启电脑</p>
 </li>
 </ol>
 </li>
 </ol>
-<h2 id="第三部分：你的朋友（控制端）"><a href="#第三部分：你的朋友（控制端）" class="headerlink" title="第三部分：你的朋友（控制端）"></a>第三部分：你的朋友（控制端）</h2><ol>
+<h3 id="第三部分：你的朋友（控制端）"><a href="#第三部分：你的朋友（控制端）" class="headerlink" title="第三部分：你的朋友（控制端）"></a>第三部分：你的朋友（控制端）</h3><ol>
 <li><strong>安装 ZeroTier 客户端</strong>。</li>
 <li><strong>加入同一个虚拟网络</strong>：输入你提供的 <strong>Network ID</strong>。</li>
 <li><strong>添加同一个 Moon 节点</strong>：<ol>
