@@ -2,6 +2,15 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://retr67.github.io/2026/06/25/%E8%BF%9C%E7%A8%8B%E6%9C%AC%E5%9C%B0%E5%A4%9A%E4%BA%BA%E6%B8%B8%E6%88%8FzeroTier-parsec/</loc>
+    
+    <lastmod>2026-07-15</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
     <loc>https://retr67.github.io/2026/07/02/teamspeak3%E4%BB%A5%E5%8F%8A%E9%9F%B3%E4%B9%90%E6%9C%BA%E5%99%A8%E4%BA%BA%E6%90%AD%E5%BB%BA/</loc>
     
     <lastmod>2026-07-15</lastmod>
@@ -23,15 +32,6 @@
     <loc>https://retr67.github.io/2026/06/27/20260627Pixel%E6%89%8B%E6%9C%BA%E4%B8%AD%E5%9B%BD%E5%A4%A7%E9%99%86%E6%95%B0%E6%8D%AE%E4%B8%8A%E7%BD%91%E6%95%99%E7%A8%8B/</loc>
     
     <lastmod>2026-06-27</lastmod>
-    
-    <changefreq>monthly</changefreq>
-    <priority>0.6</priority>
-  </url>
-  
-  <url>
-    <loc>https://retr67.github.io/2026/06/25/%E8%BF%9C%E7%A8%8B%E6%9C%AC%E5%9C%B0%E5%A4%9A%E4%BA%BA%E6%B8%B8%E6%88%8FzeroTier-parsec/</loc>
-    
-    <lastmod>2026-06-26</lastmod>
     
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
