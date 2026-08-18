@@ -180,7 +180,7 @@
       <span class="post-meta-item-text">发表于</span>
       
 
-      <time title="创建时间：2026-08-18 01:46:00 / 修改时间：02:00:14" itemprop="dateCreated datePublished" datetime="2026-08-18T01:46:00+08:00">2026-08-18</time>
+      <time title="创建时间：2026-08-18 01:46:00 / 修改时间：21:34:32" itemprop="dateCreated datePublished" datetime="2026-08-18T01:46:00+08:00">2026-08-18</time>
     </span>
 
   
@@ -193,161 +193,52 @@
     
     
     <div class="post-body" itemprop="articleBody">
-          <h1 id="给纯文本大模型装上”眼睛”：modlens-接入-Gemini-多-Key-自动轮换实战"><a href="#给纯文本大模型装上”眼睛”：modlens-接入-Gemini-多-Key-自动轮换实战" class="headerlink" title="给纯文本大模型装上”眼睛”：modlens 接入 + Gemini 多 Key 自动轮换实战"></a>给纯文本大模型装上”眼睛”：modlens 接入 + Gemini 多 Key 自动轮换实战</h1><blockquote>
-<p>从”装不上、读不出、额度秒光”，到”全自动识图 + 多 Key 自动轮换”的完整记录。<br>环境：Windows + DeepSeek Harness (dsh, web profile)，模型为纯文本的 deepseek-v4-flash。</p>
+          <p>Automatic <strong>Gemini API key rotation</strong> for <a target="_blank" rel="noopener" href="https://github.com/liustack/modlens">modlens</a> on <strong>DeepSeek Harness (dsh)</strong> — when one key hits its quota (HTTP 429), the read<br>automatically switches to the next key in the pool and retries, with zero<br>intervention. Works everywhere modlens reads an image: the dsh GUI paste flow,<br>the <code>modlens_read_image</code> tool, and the CLI.</p>
+<blockquote>
+<p>⚠️ <strong>Unofficial</strong>: this patches the installed modlens package. The patch is<br>wiped by any modlens <em>upgrade</em>; <code>patch.ps1</code> re-applies it in one command.<br>If modlens upstream ever ships native multi-key support, drop this project.</p>
 </blockquote>
-<hr>
-<h2 id="TL-DR"><a href="#TL-DR" class="headerlink" title="TL;DR"></a>TL;DR</h2><ul>
-<li>在 dsh 上，modlens <strong>不是 skill，而是原生插件</strong>——装 skill 没用，一句话装插件即可</li>
-<li>图片读取走 Gemini 视觉引擎，配置在 <code>~/.modlens/config.json</code>，所有 harness 共享</li>
-<li>踩了 4 类坑：<strong>直连失败 &#x2F; 间歇 500&#x2F;503 &#x2F; 429 配额 &#x2F; 代理节点地区限制</strong></li>
-<li>modlens <strong>不支持多 Key</strong>，于是自研了 key 池 + 429 自动轮换 + 升级重打补丁三件套</li>
-<li>轮换逻辑打进插件引擎，<strong>一次修改覆盖 GUI 粘贴、工具调用、命令行所有入口</strong></li>
-<li>已开源：<a target="_blank" rel="noopener" href="https://github.com/retr67/modlens-key-rotation">https://github.com/retr67/modlens-key-rotation</a></li>
+<h2 id="Why"><a href="#Why" class="headerlink" title="Why"></a>Why</h2><p>modlens reads images through a single Gemini API key stored in <code>~/.modlens/config.json</code>. Free-tier keys hit daily quota (429 <code>RESOURCE_EXHAUSTED</code>) &#x2F; rate limits quickly, and modlens has no retry or<br>failover for that. This project adds:</p>
+<ul>
+<li>a <strong>key pool</strong> (<code>~/.modlens/api-keys.json</code>) — list, add, rotate, inspect</li>
+<li>an <strong>engine patch</strong> — 429 triggers an automatic switch to the next pool key,<br>persisted to the config, then a retry of the same request (up to 8 rotations)</li>
+<li>a <strong>CLI wrapper</strong> — 429 → rotate + retry; 5xx → backoff retry on the same key</li>
+<li>a <strong>re-patch script</strong> — re-applies the engine patch after a modlens upgrade</li>
 </ul>
-<hr>
-<h2 id="1-缘起：纯文本模型看不见图"><a href="#1-缘起：纯文本模型看不见图" class="headerlink" title="1. 缘起：纯文本模型看不见图"></a>1. 缘起：纯文本模型看不见图</h2><p>当前会话的模型是纯文本输入（deepseek-v4-flash）。想让 Agent 分析截图、图表、扫描件，直接喂图片是喂不进去的——需要一层”视觉桥接”把图片变成模型能读的文字。</p>
-<p>这就是 <a target="_blank" rel="noopener" href="https://github.com/liustack/modlens">modlens</a> 干的事：把图片转成<strong>结构化 JSON 证据</strong>——全量 OCR 转写（<code>ocr.full_text</code>）、版面布局（<code>layout.regions</code>）、语义（画面场景、意图、实体、关系）、视觉细节、以及不确定项列表。模型拿到这些 JSON，就像真的”看见”了图。</p>
-<h2 id="2-关键认知：在-dsh-上-modlens-是插件，不是-skill"><a href="#2-关键认知：在-dsh-上-modlens-是插件，不是-skill" class="headerlink" title="2. 关键认知：在 dsh 上 modlens 是插件，不是 skill"></a>2. 关键认知：在 dsh 上 modlens 是插件，不是 skill</h2><p>安装第一步就差点走偏。modlens 官方 INSTALL.md 写的是”把 <code>skills/modlens</code> 文件夹拷到你的 harness skill 目录”，但文档<strong>开头的 Step 0</strong> 明确警告：</p>
-<blockquote>
-<p>如果你在 DeepSeek Harness (dsh) 里，停下来。dsh 上 modlens 不是 skill，是<strong>原生插件</strong>。只装 skill 文件夹，你会既没有 <code>modlens_read_image</code> 工具，也没有 <code>(modlens vision)</code> 模型条目。</p>
-</blockquote>
-<p>判断依据很简单：存在 <code>~/.dsh/</code> 即 dsh 环境。安装只需一条命令：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npx -y @deepseek-ai/dsh plugin --profile web add @liustack/modlens@3.16.5</span><br></pre></td></tr></table></figure>
+<h2 id="Requirements"><a href="#Requirements" class="headerlink" title="Requirements"></a>Requirements</h2><ul>
+<li>DeepSeek Harness (dsh) with the modlens plugin installed: <code>npx -y @deepseek-ai/dsh plugin --profile web add @liustack/modlens@&lt;version&gt;</code></li>
+<li>Node 22.19+ (modlens requirement)</li>
+<li>PowerShell (Windows) — the scripts are <code>.ps1</code></li>
+</ul>
+<h2 id="Install"><a href="#Install" class="headerlink" title="Install"></a>Install</h2><p>Clone this repo (or copy <code>scripts/</code>), then:</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. copy scripts next to the modlens config</span></span><br><span class="line"><span class="built_in">Copy-Item</span> scripts\* <span class="string">&quot;<span class="variable">$env:USERPROFILE</span>\.modlens\&quot;</span></span><br><span class="line"><span class="comment"># or link: New-Item -ItemType SymbolicLink ... (per-file)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. apply the engine patch (idempotent)</span></span><br><span class="line">powershell <span class="literal">-ExecutionPolicy</span> Bypass <span class="operator">-File</span> <span class="string">&quot;<span class="variable">$env:USERPROFILE</span>\.modlens\patch.ps1&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. seed the key pool (one command per key)</span></span><br><span class="line">powershell <span class="literal">-ExecutionPolicy</span> Bypass <span class="operator">-File</span> <span class="string">&quot;<span class="variable">$env:USERPROFILE</span>\.modlens\rotate.ps1&quot;</span> add &lt;GEMINI_API_KEY&gt;</span><br></pre></td></tr></table></figure>
 
-<p>它会：把插件写进 web profile 的 <code>package.json</code>（依赖 + bundles）、跑 pnpm 安装、并处理 pnpm 11 的发布窗口限制（写入 <code>minimumReleaseAgeExclude</code>）。验证：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npx -y @deepseek-ai/dsh plugin --profile web list</span><br></pre></td></tr></table></figure>
+<p>The active key is the one modlens uses: if you already configured a key via <code>modlens config set gemini-api.apiKey</code>, add it to the pool too so rotation can<br>cycle back to it.</p>
+<h2 id="Usage"><a href="#Usage" class="headerlink" title="Usage"></a>Usage</h2><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># manage the pool</span></span><br><span class="line">rotate.ps1 list                          <span class="comment"># show pool, &gt;&gt; marks the active key</span></span><br><span class="line">rotate.ps1 status                        <span class="comment"># pool size + active key (masked)</span></span><br><span class="line">rotate.ps1 rotate                        <span class="comment"># switch to the next key (persists)</span></span><br><span class="line">rotate.ps1 add &lt;key&gt;                     <span class="comment"># add a key to the pool</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># read an image with automatic rotation</span></span><br><span class="line">ml.ps1 <span class="literal">-Image</span> &lt;path<span class="operator">-or</span><span class="literal">-url</span>&gt;</span><br></pre></td></tr></table></figure>
 
-<p>装完<strong>需要重启 dsh</strong>，模型选择器里才会出现 <code>(modlens vision)</code> 条目。</p>
-<h2 id="3-配置视觉引擎：Gemini-代理"><a href="#3-配置视觉引擎：Gemini-代理" class="headerlink" title="3. 配置视觉引擎：Gemini + 代理"></a>3. 配置视觉引擎：Gemini + 代理</h2><p>引擎配置存放在 <code>~/.modlens/config.json</code>（所有 harness 共享），视觉引擎有 Gemini &#x2F; OpenAI 兼容 &#x2F; Antigravity CLI 等多条路径。推荐 Gemini（免费 key、无头环境可用、读取只要 5~10 秒）。</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">modlens config <span class="built_in">set</span> gemini-api.apiKey &lt;KEY&gt;</span><br><span class="line">modlens config <span class="built_in">set</span> provider gemini-api</span><br></pre></td></tr></table></figure>
+<p>The engine patch makes rotation automatic for <strong>every</strong> read path (GUI paste, <code>modlens_read_image</code> tool, CLI), so <code>rotate.ps1 rotate</code> is mainly for manual<br>override or diagnosis.</p>
+<h3 id="If-you-use-a-proxy"><a href="#If-you-use-a-proxy" class="headerlink" title="If you use a proxy"></a>If you use a proxy</h3><p>modlens itself supports it — no changes needed here:</p>
+<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">modlens config <span class="built_in">set</span> proxy http://<span class="number">127.0</span>.<span class="number">0.1</span>:&lt;port&gt;</span><br></pre></td></tr></table></figure>
 
-<p>健康检查（不耗额度）：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line">Node</span><br><span class="line">  [ok] v24.19.0 (minimum 22.19)</span><br><span class="line">Providers</span><br><span class="line">  [ok] gemini-api: apiKey: file</span><br><span class="line">Selected provider</span><br><span class="line">  gemini-api</span><br><span class="line">  reason: provider set in the config file</span><br></pre></td></tr></table></figure>
+<p>Note: Google’s Gemini API is region-restricted. A proxy exit in an unsupported<br>region (e.g. mainland China, Thailand) fails with <code>400 User location is not supported</code> for <strong>all</strong> keys — rotation cannot fix<br>that; switch the proxy node instead.</p>
+<h2 id="After-a-modlens-upgrade"><a href="#After-a-modlens-upgrade" class="headerlink" title="After a modlens upgrade"></a>After a modlens upgrade</h2><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">powershell <span class="literal">-ExecutionPolicy</span> Bypass <span class="operator">-File</span> <span class="string">&quot;<span class="variable">$env:USERPROFILE</span>\.modlens\patch.ps1&quot;</span></span><br></pre></td></tr></table></figure>
 
-<p><strong>判断成功的标准</strong>就是 <code>Selected provider</code> 那两行：选中的 provider 必须是上面 Providers 列表里 <code>[ok]</code> 的那个。其他 provider 显示 <code>[!!]</code> 属正常，无需处理。</p>
-<h2 id="4-踩坑实录（含金量最高的一段）"><a href="#4-踩坑实录（含金量最高的一段）" class="headerlink" title="4. 踩坑实录（含金量最高的一段）"></a>4. 踩坑实录（含金量最高的一段）</h2><h3 id="4-1-直连失败-→-走本地代理"><a href="#4-1-直连失败-→-走本地代理" class="headerlink" title="4.1 直连失败 → 走本地代理"></a>4.1 直连失败 → 走本地代理</h3><p>首次读取报 <code>UND_ERR_CONNECT_TIMEOUT</code>。排查发现<strong>这台机器直连不了 Google</strong>：<code>google.com</code>、<code>generativelanguage.googleapis.com</code> 全部超时，而 GitHub &#x2F; npm registry 正常——典型的网络环境限制。</p>
-<p>解法：检测到系统已启用本地 Clash 代理 <code>127.0.0.1:7897</code>，配置给 modlens：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">modlens config <span class="built_in">set</span> proxy http://127.0.0.1:7897</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>顺带学到的排障技巧：确定”是不是代理问题”，先看套上代理后能否建立 TLS 隧道、能否 GET 通目标域名，再谈业务请求。</p>
-</blockquote>
-<h3 id="4-2-间歇性-500-503：服务端故障，重试即可"><a href="#4-2-间歇性-500-503：服务端故障，重试即可" class="headerlink" title="4.2 间歇性 500&#x2F;503：服务端故障，重试即可"></a>4.2 间歇性 500&#x2F;503：服务端故障，重试即可</h3><p>代理通了之后，读取又随机报 <code>500 INTERNAL</code> &#x2F; <code>503 Unavailable</code>。用脚本逐字节复现 modlens 的请求，发现<strong>同样的请求有时 200 有时 500</strong>，成功率大约 25%~33%，且多个 Gemini 模型（3.5&#x2F;3.6&#x2F;3.7-flash）都这样——这是<strong>上游服务端&#x2F;代理出口的间歇性不稳定</strong>，不是请求格式或配置问题。策略就是”带退避的重试”。</p>
-<h3 id="4-3-429-配额：免费-key-的日常"><a href="#4-3-429-配额：免费-key-的日常" class="headerlink" title="4.3 429 配额：免费 key 的日常"></a>4.3 429 配额：免费 key 的日常</h3><p>免费 key 的日配额&#x2F;限流触发 <code>429 RESOURCE_EXHAUSTED</code> &#x2F; <code>RATE_LIMIT_EXCEEDED</code>。<strong>关键认知：Gemini 的配额是按 key 独立计算的</strong>——一把 key 烧完，换一把全新 key 就是全新额度。这正是”多 Key 轮换”能解决问题的理论根基。</p>
-<h3 id="4-4-地区限制：轮换救不了的坑"><a href="#4-4-地区限制：轮换救不了的坑" class="headerlink" title="4.4 地区限制：轮换救不了的坑"></a>4.4 地区限制：轮换救不了的坑</h3><p>某次突然全部读取报 <code>400 &quot;User location is not supported for the API use&quot;</code>。查代理出口 IP 是泰国（曼谷）——<strong>Gemini API 不支持泰国</strong>。这是最阴的坑：<strong>它按 IP 地域一刀切，换多少把 key 都没用</strong>，只能把代理节点切到支持地区（美&#x2F;日&#x2F;港&#x2F;新&#x2F;韩等）。教训：遇到全 key 同时失败的 400，先查出口地区，别急着怀疑 key。</p>
-<h2 id="5-核心-DIY：多-Key-自动轮换"><a href="#5-核心-DIY：多-Key-自动轮换" class="headerlink" title="5. 核心 DIY：多 Key 自动轮换"></a>5. 核心 DIY：多 Key 自动轮换</h2><h3 id="5-1-为什么需要"><a href="#5-1-为什么需要" class="headerlink" title="5.1 为什么需要"></a>5.1 为什么需要</h3><p>我查了 modlens 源码：每 provider 只有<strong>单 key</strong>，没有多 key &#x2F; 轮换 &#x2F; 429 重试。多把 key 只能”手动换”。于是自研了一套。</p>
-<h3 id="5-2-三件套结构"><a href="#5-2-三件套结构" class="headerlink" title="5.2 三件套结构"></a>5.2 三件套结构</h3><table>
-<thead>
-<tr>
-<th>组件</th>
-<th>作用</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><code>rotate.ps1</code></td>
-<td>key 池管理：<code>add / list / rotate / status</code></td>
-</tr>
-<tr>
-<td>引擎补丁</td>
-<td>打进 <code>dist/main.js</code>，<strong>任何入口</strong>读到 429 自动换 key 重试</td>
-</tr>
-<tr>
-<td><code>ml.ps1</code></td>
-<td>命令行读取包装器：429 轮换 + 5xx 退避重试（双保险）</td>
-</tr>
-<tr>
-<td><code>patch.ps1</code></td>
-<td>modlens 升级后一键重打引擎补丁</td>
-</tr>
-</tbody></table>
-<p>Key 池存在 <code>~/.modlens/api-keys.json</code>（与 config.json 同目录、同信任级别）。</p>
-<h3 id="5-3-引擎补丁原理"><a href="#5-3-引擎补丁原理" class="headerlink" title="5.3 引擎补丁原理"></a>5.3 引擎补丁原理</h3><p>补丁目标函数是 <code>executeGeminiApi</code>（Gemini 读取的核心）。<strong>改前</strong>：读一次 key → 发一次请求 → 失败直接抛错（429 成死路）。<strong>改后</strong>：<code>for(;;)</code> 循环，只有 429 才触发轮换。</p>
-<figure class="highlight js"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">for</span> (;;) &#123;</span><br><span class="line">  <span class="comment">// 用 activeKey 发请求</span></span><br><span class="line">  <span class="keyword">const</span> response = <span class="keyword">await</span> <span class="title function_">apiFetch</span>(url, &#123; <span class="attr">headers</span>: &#123; <span class="string">&quot;x-goog-api-key&quot;</span>: activeKey &#125; &#125;);</span><br><span class="line">  <span class="keyword">if</span> (response.<span class="property">ok</span>) &#123; <span class="comment">/* 解析，返回 —— 不变 */</span> &#125;</span><br><span class="line"></span><br><span class="line">  <span class="keyword">if</span> (response.<span class="property">status</span> === <span class="number">429</span> &amp;&amp; rotationCount &lt; <span class="number">8</span>) &#123;</span><br><span class="line">    <span class="keyword">const</span> pool = <span class="title class_">JSON</span>.<span class="title function_">parse</span>(fs.<span class="title function_">readFileSync</span>(poolPath, <span class="string">&quot;utf-8&quot;</span>));</span><br><span class="line">    <span class="keyword">const</span> next = pool[(idx + <span class="number">1</span>) % pool.<span class="property">length</span>];     <span class="comment">// 循环取下一个</span></span><br><span class="line">    <span class="keyword">if</span> (next &amp;&amp; next !== activeKey) &#123;</span><br><span class="line">      <span class="title function_">setConfigValue</span>(<span class="string">&quot;gemini-api.apiKey&quot;</span>, next);    <span class="comment">// 持久化：下次会话直接用新 key</span></span><br><span class="line">      activeKey = next;</span><br><span class="line">      rotationCount++;</span><br><span class="line">      <span class="keyword">continue</span>;                                      <span class="comment">// 重发同一个请求</span></span><br><span class="line">    &#125;</span><br><span class="line">  &#125;</span><br><span class="line">  <span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">Error</span>(<span class="string">`Gemini API error <span class="subst">$&#123;response.status&#125;</span>: ...`</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
-
-<p>设计要点（每条都有讲究）：</p>
-<table>
-<thead>
-<tr>
-<th>决策</th>
-<th>理由</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>只对 429 轮换</td>
-<td>配额按 key 独立，换 key 有效；而 400&#x2F;500&#x2F;503 对所有 key 一视同仁，轮换白费</td>
-</tr>
-<tr>
-<td>取模循环</td>
-<td>最后一把用完绕回第一把</td>
-</tr>
-<tr>
-<td>先持久化再重试</td>
-<td>复用 modlens 自己的 <code>setConfigValue</code>，让新 key 在下次读取&#x2F;重启后仍然生效</td>
-</tr>
-<tr>
-<td>上限 + 去重保护</td>
-<td>防止死循环；key 池全烧完时明确报错提醒补 key</td>
-</tr>
-<tr>
-<td><strong>请求体一行不动</strong></td>
-<td>只改 <code>x-goog-api-key</code> 头，绝不破坏 API 契约</td>
-</tr>
-</tbody></table>
-<h3 id="5-4-为什么”改一个文件”就全覆盖？"><a href="#5-4-为什么”改一个文件”就全覆盖？" class="headerlink" title="5.4 为什么”改一个文件”就全覆盖？"></a>5.4 为什么”改一个文件”就全覆盖？</h3><p>这是最有价值的架构洞见之一。modlens 包里其实是两个组件：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">@liustack/modlens</span><br><span class="line">├── dsh/index.js     ← 插件壳：注册工具、粘贴转路径——没有任何读图逻辑</span><br><span class="line">└── dist/main.js     ← CLI 引擎：真正的读图、调 API、解析 JSON</span><br></pre></td></tr></table></figure>
-
-<p>插件壳的 <code>execute()</code> 不做读图，而是 <code>spawn</code> 子进程去跑 <code>dist/main.js</code>（源码里 <code>CLI_PATH = new URL(&#39;../dist/main.js&#39;, import.meta.url)</code>）。所以<strong>GUI 粘贴、<code>modlens_read_image</code> 工具、命令行，最终都汇入同一份引擎代码</strong>——补丁只需打一处。这也解释了为什么 modlens 在 dsh 上要装成插件而不是 skill：插件是给 dsh 的适配壳，引擎是 pnpm 装进来的同一个 CLI。</p>
-<h2 id="6-升级是补丁的天敌（以及怎么优雅应对）"><a href="#6-升级是补丁的天敌（以及怎么优雅应对）" class="headerlink" title="6. 升级是补丁的天敌（以及怎么优雅应对）"></a>6. 升级是补丁的天敌（以及怎么优雅应对）</h2><p>npm 把 <code>node_modules</code> 里的包当<strong>不可变副本</strong>：升级 &#x3D; 拉新 tarball &#x3D; 手工改动被冲掉。实测：modlens 从 3.16.5 升到 3.16.7，<strong>补丁果然被覆盖</strong>。</p>
-<p>应对方案就是 <code>patch.ps1</code>：它内置补丁的前后文本 hunk，检测到 <code>[patch:rotate]</code> 标记消失就自动重打，再跑 <code>node --check</code> 校验语法。幂等可重复执行：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">powershell -ExecutionPolicy Bypass -File &quot;$env:USERPROFILE\.modlens\patch.ps1&quot;</span><br><span class="line"># =&gt; patch applied and syntax-checked OK</span><br></pre></td></tr></table></figure>
-
-<p>如果未来版本重写了目标函数、hunk 匹配不上，脚本会明确报 “no match” 而不是静默改坏文件——此时再人工出新的补丁。<strong>顺手收获</strong>：补丁被冲后重打时，发现激活 key 已经自动从 <code>[1]</code> 轮换到 <code>[2]</code>——说明轮换系统在真实读取中已经实战生效过。</p>
-<h2 id="7-发布与合规：别把功劳和-license-搞错"><a href="#7-发布与合规：别把功劳和-license-搞错" class="headerlink" title="7. 发布与合规：别把功劳和 license 搞错"></a>7. 发布与合规：别把功劳和 license 搞错</h2><p>沉淀成开源仓库 <a target="_blank" rel="noopener" href="https://github.com/retr67/modlens-key-rotation">https://github.com/retr67/modlens-key-rotation</a> 前，做了三件事：</p>
-<ol>
-<li><strong>隐私清理</strong>：仓库内无任何 key、代理端口、机器路径（脚本全部用 <code>$env:USERPROFILE</code> 派生），全仓正则扫描零命中</li>
-<li><strong>标注衍生关系</strong>：补丁是 modlens 源码的<strong>衍生修改</strong>，而 modlens 是 MIT（Copyright © 2026 Leon Liu&#x2F;liustack）——MIT 允许修改再分发，但<strong>必须保留原始版权声明</strong>，所以仓库里放了 <code>LICENSE.modlens</code>（modlens 原文）+ <code>ACKNOWLEDGMENTS.md</code>（清晰区分”哪些来自上游、哪些是我们自己的”，并引导用户给上游点 star）</li>
-<li><strong>分清许可</strong>：我们自己的脚本&#x2F;文档用 MIT，补丁 hunk 走 modlens 的 MIT</li>
-</ol>
-<h2 id="8-最终效果"><a href="#8-最终效果" class="headerlink" title="8. 最终效果"></a>8. 最终效果</h2><table>
-<thead>
-<tr>
-<th>场景</th>
-<th>识图</th>
-<th>429 自动轮换</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>当前对话</td>
-<td>✅</td>
-<td>✅</td>
-</tr>
-<tr>
-<td>新开对话 &#x2F; 换工作区</td>
-<td>✅（插件是 profile 级）</td>
-<td>✅（轮换在插件引擎内）</td>
-</tr>
-<tr>
-<td>重启 dsh</td>
-<td>✅</td>
-<td>✅</td>
-</tr>
-<tr>
-<td>命令行 <code>ml.ps1</code></td>
-<td>✅</td>
-<td>✅（脚本 + 引擎双保险）</td>
-</tr>
-</tbody></table>
-<p>日常使用完全无感：粘贴图片 → 插件读取 → 429 自动换 key 重试。读一次约 3~5 秒，返回的是一份完整可引用的结构化证据。</p>
-<h2 id="9-一些可以带走的心得"><a href="#9-一些可以带走的心得" class="headerlink" title="9. 一些可以带走的心得"></a>9. 一些可以带走的心得</h2><ol>
-<li><strong>改第三方包先想清楚”不可变”代价</strong>：node_modules 补丁天然脆弱，必须脚本化 + 幂等 + 语法自检</li>
-<li><strong>架构决定补丁面</strong>：壳 + 引擎的分离，让”改一处覆盖所有入口”成为可能——设计工具时值得借鉴</li>
-<li><strong>排障先分层</strong>：连不上→查代理；全 key 挂→查地区；偶发失败→查服务端；单 key 挂→查配额</li>
-<li><strong>配额是按 key 独立的</strong>：多 key 轮换是真能续命的方案，几把免费 key 就能撑很久</li>
-<li><strong>合规不是小事</strong>：衍生作品必须带原作者 LICENSE 声明，署名页把归属写清楚，皆大欢喜</li>
-</ol>
-<hr>
-<p><em>环境记录：Windows &#x2F; DeepSeek Harness (dsh) web profile &#x2F; model deepseek-v4-flash &#x2F; modlens 3.16.7 &#x2F; 2026-08</em></p>
+<p>It detects whether the patch is still present; if a new version changed the<br>targeted code and the hunks no longer match, it reports which hunk failed and<br>tells you to file a new patch.</p>
+<h2 id="How-it-works"><a href="#How-it-works" class="headerlink" title="How it works"></a>How it works</h2><p>modlens ships two components in one package:</p>
+<ul>
+<li><code>dsh/index.js</code> — the dsh plugin shell: registers <code>modlens_read_image</code>,<br>handles paste-to-path. It contains <strong>no</strong> image-reading logic; it spawns a<br>child process running the CLI engine.</li>
+<li><code>dist/main.js</code> — the CLI engine: reads the image, calls Gemini<br>(<code>executeGeminiApi</code>), parses structured JSON. <strong>Every</strong> read path funnels<br>through this file.</li>
+</ul>
+<p>The patch lives in <code>executeGeminiApi</code>: a single request becomes a loop that<br>rotates the pool on 429. See <code>PATCH.md</code> for the exact change.</p>
+<h2 id="Security"><a href="#Security" class="headerlink" title="Security"></a>Security</h2><ul>
+<li>Keys are stored <strong>in plain text</strong> at <code>~/.modlens/api-keys.json</code> (same trust<br>level as modlens’s own <code>config.json</code>, which also stores the key in plain<br>text). Do not share your home directory.</li>
+<li>This repo contains <strong>no keys, no credentials, no machine-specific paths</strong> —<br>all paths derive from <code>$env:USERPROFILE</code>.</li>
+</ul>
+<h2 id="Credits-license"><a href="#Credits-license" class="headerlink" title="Credits &amp; license"></a>Credits &amp; license</h2><ul>
+<li><strong><a target="_blank" rel="noopener" href="https://github.com/liustack/modlens">modlens</a></strong> by <strong>Leon Liu (liustack)</strong> — the vision engine this project wraps and patches. MIT licensed<br>(Copyright © 2026 Leon Liu), see <a href="LICENSE.modlens"><code>LICENSE.modlens</code></a>.<br>The patch hunks in this repo are a derivative modification of modlens<br>source and carry its MIT notice as required.</li>
+<li>This project is <strong>not endorsed by upstream</strong> — it is an independent utility<br>that depends on modlens.</li>
+<li>Our own scripts and docs: MIT (see <a href="LICENSE"><code>LICENSE</code></a>).</li>
+<li>Full attribution: <a href="ACKNOWLEDGMENTS.md"><code>ACKNOWLEDGMENTS.md</code></a> — please star<br>the upstream project, the real work lives there.</li>
+</ul>
 
       
     </div>
@@ -404,7 +295,7 @@
       <span class="post-meta-item-text">发表于</span>
       
 
-      <time title="创建时间：2026-08-18 01:42:00 / 修改时间：02:00:16" itemprop="dateCreated datePublished" datetime="2026-08-18T01:42:00+08:00">2026-08-18</time>
+      <time title="创建时间：2026-08-18 01:42:00 / 修改时间：21:39:38" itemprop="dateCreated datePublished" datetime="2026-08-18T01:42:00+08:00">2026-08-18</time>
     </span>
 
   
@@ -417,12 +308,68 @@
     
     
     <div class="post-body" itemprop="articleBody">
-          <h1 id="在-Windows-上给-DeepSeek-Harness-接入-OpenViking-记忆插件：一次「看似简单却踩了一路坑」的记录"><a href="#在-Windows-上给-DeepSeek-Harness-接入-OpenViking-记忆插件：一次「看似简单却踩了一路坑」的记录" class="headerlink" title="在 Windows 上给 DeepSeek Harness 接入 OpenViking 记忆插件：一次「看似简单却踩了一路坑」的记录"></a>在 Windows 上给 DeepSeek Harness 接入 OpenViking 记忆插件：一次「看似简单却踩了一路坑」的记录</h1><blockquote>
-<p>记录一次从零安装、反复排查、最终定位并修复 OpenViking 本地向量库 bug 的全过程。</p>
-</blockquote>
-<h2 id="背景"><a href="#背景" class="headerlink" title="背景"></a>背景</h2><p>我用的 DeepSeek Harness（以下简称 dsh）是一个 AI WebUI，希望在对话里具备「长期记忆」能力。于是我想接入 <a target="_blank" rel="noopener" href="https://github.com/volcengine/OpenViking">OpenViking</a>——一个面向 AI Agent 的上下文&#x2F;记忆存储服务端。</p>
-<p>我的环境：</p>
-<table>
+          <p>修复 OpenViking 在 <strong>Windows + 本地向量库 + 本地 embedding 模型</strong> 组合下，记忆文件已生成但搜索不到的问题。</p>
+<h2 id="问题现象"><a href="#问题现象" class="headerlink" title="问题现象"></a>问题现象</h2><ul>
+<li>OpenViking 服务可以正常启动</li>
+<li>记忆文件可以正常生成</li>
+<li>但执行搜索时返回空结果</li>
+</ul>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ov find <span class="string">&quot;LoopingIsle&quot;</span> --context-type memory</span><br></pre></td></tr></table></figure>
+
+<p>返回：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;ok&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;result&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;memories&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;resources&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;skills&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;total&quot;</span><span class="punctuation">:</span> <span class="number">0</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
+
+<p>服务日志出现：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openviking.storage.viking_vector_index_backend - ERROR - Error reading existing record before partial update: Strings must be encoded before hashing</span><br><span class="line">openviking.storage.collection_schemas - ERROR - Failed to write to vector database: Strings must be encoded before hashing</span><br></pre></td></tr></table></figure>
+
+<h2 id="根本原因"><a href="#根本原因" class="headerlink" title="根本原因"></a>根本原因</h2><p>OpenViking 在把字符串 ID 转成 64 位整数时，使用了：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">xxhash.xxh64(input_string)</span><br></pre></td></tr></table></figure>
+
+<p>但 <code>xxhash</code> 在 Python 3 中要求传入 <code>bytes</code>，不能直接传入 <code>str</code>，因此抛出：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Strings must be encoded before hashing</span><br></pre></td></tr></table></figure>
+
+<p>这导致：</p>
+<ul>
+<li>记忆 Markdown 文件正常写入</li>
+<li>向量没有成功写入向量库</li>
+<li>所以记忆文件存在，但语义搜索找不到</li>
+</ul>
+<h2 id="修复"><a href="#修复" class="headerlink" title="修复"></a>修复</h2><p>修改文件：</p>
+<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openviking/storage/vectordb/utils/str_to_uint64.py</span><br></pre></td></tr></table></figure>
+
+<p>修改前：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">str_to_uint64</span>(<span class="params">input_string: <span class="built_in">str</span></span>) -&gt; <span class="built_in">int</span>:</span><br><span class="line">    <span class="keyword">return</span> xxhash.xxh64(input_string).intdigest()</span><br></pre></td></tr></table></figure>
+
+<p>修改后：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">str_to_uint64</span>(<span class="params">input_string: <span class="built_in">str</span></span>) -&gt; <span class="built_in">int</span>:</span><br><span class="line">    <span class="keyword">return</span> xxhash.xxh64(input_string.encode(<span class="string">&quot;utf-8&quot;</span>)).intdigest()</span><br></pre></td></tr></table></figure>
+
+<h2 id="补丁文件"><a href="#补丁文件" class="headerlink" title="补丁文件"></a>补丁文件</h2><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>patches/0001-fix-str_to_uint64-xxhash-encoding.patch</code></td>
+<td>Git 补丁，可直接 <code>git apply</code></td>
+</tr>
+<tr>
+<td><code>patches/patch-openviking-xxhash.ps1</code></td>
+<td>Windows PowerShell 一键打补丁脚本</td>
+</tr>
+<tr>
+<td><code>patches/fix-openviking-memory.ps1</code></td>
+<td>重置向量库并重新索引记忆的修复脚本</td>
+</tr>
+</tbody></table>
+<h2 id="使用方法"><a href="#使用方法" class="headerlink" title="使用方法"></a>使用方法</h2><h3 id="方法一：Git-apply"><a href="#方法一：Git-apply" class="headerlink" title="方法一：Git apply"></a>方法一：Git apply</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git apply patches/0001-fix-str_to_uint64-xxhash-encoding.patch</span><br></pre></td></tr></table></figure>
+
+<h3 id="方法二：PowerShell-脚本"><a href="#方法二：PowerShell-脚本" class="headerlink" title="方法二：PowerShell 脚本"></a>方法二：PowerShell 脚本</h3><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">powershell <span class="literal">-ExecutionPolicy</span> Bypass <span class="operator">-File</span> patches\patch<span class="literal">-openviking-xxhash</span>.ps1</span><br></pre></td></tr></table></figure>
+
+<h3 id="修复后重新索引"><a href="#修复后重新索引" class="headerlink" title="修复后重新索引"></a>修复后重新索引</h3><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ov reindex viking://user/default/memories <span class="literal">--mode</span> semantic_and_vectors <span class="literal">--wait</span> true</span><br><span class="line">ov find <span class="string">&quot;LoopingIsle&quot;</span> <span class="literal">--context-type</span> memory</span><br></pre></td></tr></table></figure>
+
+<h2 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h2><table>
 <thead>
 <tr>
 <th>项目</th>
@@ -442,12 +389,8 @@
 <td>0.4.14</td>
 </tr>
 <tr>
-<td>dsh profile</td>
-<td>web</td>
-</tr>
-<tr>
-<td>记忆插件</td>
-<td><code>@openviking/dsh-memory-plugin</code></td>
+<td>向量库</td>
+<td>local 本地向量库</td>
 </tr>
 <tr>
 <td>Embedding</td>
@@ -458,153 +401,25 @@
 <td>OpenCode Go（<code>deepseek-v4-flash</code>）</td>
 </tr>
 </tbody></table>
-<p>表面上看，这只是「装一个插件」；实际做下来发现，它等于：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line">装 dsh 插件</span><br><span class="line">+ 装 OpenViking 后端</span><br><span class="line">+ 装 Python 虚拟环境</span><br><span class="line">+ 下载本地向量模型</span><br><span class="line">+ 配置模型 API</span><br><span class="line">+ 修几个 bug</span><br></pre></td></tr></table></figure>
-
-<h2 id="一、先搞清楚：插件和服务端的关系"><a href="#一、先搞清楚：插件和服务端的关系" class="headerlink" title="一、先搞清楚：插件和服务端的关系"></a>一、先搞清楚：插件和服务端的关系</h2><p>OpenViking 是<strong>独立的后端服务</strong>，而 dsh 插件只是「让 dsh 自动使用这个后端的桥」。</p>
-<table>
-<thead>
-<tr>
-<th>组件</th>
-<th>角色</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>OpenViking</td>
-<td>记忆存储 &#x2F; 向量搜索 &#x2F; 模型调用的服务端</td>
-</tr>
-<tr>
-<td>dsh-memory-plugin</td>
-<td>客户端集成：自动捕获消息、提交会话、注入记忆、暴露 <code>viking_*</code> 工具</td>
-</tr>
-</tbody></table>
-<p>所以：</p>
-<ul>
-<li>OpenViking 需要单独启动、单独配置</li>
-<li>dsh 插件让 dsh 在后台自动调用它，不需要手动手动导数据</li>
-</ul>
-<h2 id="二、安装过程中踩的坑"><a href="#二、安装过程中踩的坑" class="headerlink" title="二、安装过程中踩的坑"></a>二、安装过程中踩的坑</h2><h3 id="坑-1：一开始装错了对象"><a href="#坑-1：一开始装错了对象" class="headerlink" title="坑 1：一开始装错了对象"></a>坑 1：一开始装错了对象</h3><p>我最初误以为是装 OpenCode 插件，结果装到了 OpenCode 配置里。后来确认目标是 dsh 插件，清理掉误建内容后重新来。</p>
-<blockquote>
-<p>教训：先确认目标平台，再动手。</p>
-</blockquote>
-<h3 id="坑-2：dsh-插件没有发布到-npm"><a href="#坑-2：dsh-插件没有发布到-npm" class="headerlink" title="坑 2：dsh 插件没有发布到 npm"></a>坑 2：dsh 插件没有发布到 npm</h3><p>执行：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dsh plugin --profile web add @openviking/dsh-memory-plugin</span><br></pre></td></tr></table></figure>
-
-<p>返回 404。</p>
-<p>原因：<code>@openviking/dsh-memory-plugin</code> 当时没有发布到 npm registry。</p>
-<p>解决：改用 GitHub 源码安装，把插件放进 dsh 的 <code>web</code> profile 里。</p>
-<h3 id="坑-3：OpenCode-Go-不支持-embedding"><a href="#坑-3：OpenCode-Go-不支持-embedding" class="headerlink" title="坑 3：OpenCode Go 不支持 embedding"></a>坑 3：OpenCode Go 不支持 embedding</h3><p>我的模型 API 只有 OpenCode Go 订阅，但它只提供 OpenAI 兼容的 <code>chat/completions</code> 接口，测试 <code>/embeddings</code> 返回 404。</p>
-<p>结论：</p>
-<ul>
-<li>OpenCode Go 可以当 VLM，用来做记忆提取、总结</li>
-<li>但它不能做向量搜索</li>
-</ul>
-<p>解决：采用混合方案：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">OpenCode Go -&gt; VLM（总结 / 记忆提取）</span><br><span class="line">本地 GGUF 小模型 -&gt; 向量搜索（Embedding）</span><br></pre></td></tr></table></figure>
-
-<h3 id="坑-4：本地-embedding-编译失败"><a href="#坑-4：本地-embedding-编译失败" class="headerlink" title="坑 4：本地 embedding 编译失败"></a>坑 4：本地 embedding 编译失败</h3><p>安装 <code>openviking[local-embed]</code> 时，<code>llama-cpp-python</code> 在 Python 3.14 上构建失败。</p>
-<p>原因：临时目录&#x2F;沙箱权限问题。</p>
-<p>解决：用完整权限重试后构建成功。</p>
-<h3 id="坑-5：模型下载慢-HuggingFace-连不上"><a href="#坑-5：模型下载慢-HuggingFace-连不上" class="headerlink" title="坑 5：模型下载慢 &#x2F; HuggingFace 连不上"></a>坑 5：模型下载慢 &#x2F; HuggingFace 连不上</h3><ul>
-<li>HuggingFace 直连卡在 0 字节</li>
-<li>f16 模型约 45MB，又慢又断</li>
-</ul>
-<p>解决：</p>
-<ul>
-<li>换成 <code>hf-mirror.com</code></li>
-<li>改用更小的 q4 量化模型（约 15MB）</li>
-<li>写自动重试下载脚本</li>
-</ul>
-<h3 id="坑-6：记忆文件生成了，但搜索不到（核心问题）"><a href="#坑-6：记忆文件生成了，但搜索不到（核心问题）" class="headerlink" title="坑 6：记忆文件生成了，但搜索不到（核心问题）"></a>坑 6：记忆文件生成了，但搜索不到（核心问题）</h3><p>这是最折磨人的一个。</p>
-<p>现象：</p>
-<ul>
-<li>OpenViking 服务正常</li>
-<li>记忆文件正常生成</li>
-<li>但 <code>ov find</code> &#x2F; <code>viking_search</code> 全部返回空</li>
-</ul>
-<p>服务日志出现：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openviking.storage.viking_vector_index_backend - ERROR - Error reading existing record before partial update: Strings must be encoded before hashing</span><br><span class="line">openviking.storage.collection_schemas - ERROR - Failed to write to vector database: Strings must be encoded before hashing</span><br></pre></td></tr></table></figure>
-
-<h4 id="第一层原因：向量维度不一致"><a href="#第一层原因：向量维度不一致" class="headerlink" title="第一层原因：向量维度不一致"></a>第一层原因：向量维度不一致</h4><p>一开始配置的是 768 维 embedding，后来换成 512 维本地模型，导致向量库 schema 不匹配。</p>
-<p>解决：重置向量库，让它按当前维度重建。</p>
-<p>但重建后仍然搜不到，说明还有更深的问题。</p>
-<h4 id="第二层原因：真正的-bug——xxhash-编码问题"><a href="#第二层原因：真正的-bug——xxhash-编码问题" class="headerlink" title="第二层原因：真正的 bug——xxhash 编码问题"></a>第二层原因：真正的 bug——xxhash 编码问题</h4><p>最终定位到 OpenViking 的这个文件：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openviking/storage/vectordb/utils/str_to_uint64.py</span><br></pre></td></tr></table></figure>
-
-<p>代码：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">str_to_uint64</span>(<span class="params">input_string: <span class="built_in">str</span></span>) -&gt; <span class="built_in">int</span>:</span><br><span class="line">    <span class="keyword">return</span> xxhash.xxh64(input_string).intdigest()</span><br></pre></td></tr></table></figure>
-
-<p><code>xxhash</code> 在 Python 3 中要求传入 <code>bytes</code>，不能直接传 <code>str</code>，所以报错：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Strings must be encoded before hashing</span><br></pre></td></tr></table></figure>
-
-<p>这导致：</p>
-<ul>
-<li>记忆 Markdown 文件正常写入 ✅</li>
-<li>但向量没有成功写进向量库 ❌</li>
-<li>所以记忆文件存在，却搜索不到</li>
-</ul>
-<p>修复：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">str_to_uint64</span>(<span class="params">input_string: <span class="built_in">str</span></span>) -&gt; <span class="built_in">int</span>:</span><br><span class="line">    <span class="keyword">return</span> xxhash.xxh64(input_string.encode(<span class="string">&quot;utf-8&quot;</span>)).intdigest()</span><br></pre></td></tr></table></figure>
-
-<p>修复后记忆搜索恢复正常。</p>
-<h3 id="坑-7：移动目录后启动失败"><a href="#坑-7：移动目录后启动失败" class="headerlink" title="坑 7：移动目录后启动失败"></a>坑 7：移动目录后启动失败</h3><p>把 OpenViking 从 <code>D:\LoopingIsle</code> 搬到 <code>D:\OpenViking</code> 后，启动报：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Existing collection embedding metadata does not match current configuration.</span><br></pre></td></tr></table></figure>
-
-<p>原因：向量库元数据还记录着旧路径。</p>
-<p>解决：因为模型没变、向量维度没变，只是路径变了，所以在配置里加：</p>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;embedding&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;allow_metadata_override&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<h3 id="坑-8：端口被占用导致重复启动失败"><a href="#坑-8：端口被占用导致重复启动失败" class="headerlink" title="坑 8：端口被占用导致重复启动失败"></a>坑 8：端口被占用导致重复启动失败</h3><p>再启动一个 OpenViking 时：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Application startup failed. Exiting.</span><br></pre></td></tr></table></figure>
-
-<p>原因：<code>1933</code> 端口已经有一个实例在运行。</p>
-<p>解决：启动脚本先检测端口，避免重复启动。</p>
-<h2 id="三、为什么这个-bug-很多人没遇到？"><a href="#三、为什么这个-bug-很多人没遇到？" class="headerlink" title="三、为什么这个 bug 很多人没遇到？"></a>三、为什么这个 bug 很多人没遇到？</h2><p>这个 bug 主要在以下组合下出现：</p>
+<h2 id="为什么很多人没遇到"><a href="#为什么很多人没遇到" class="headerlink" title="为什么很多人没遇到"></a>为什么很多人没遇到</h2><p>这个 bug 主要在以下组合下出现：</p>
 <ul>
 <li>Windows</li>
 <li>Python 3.14</li>
-<li>本地向量库（<code>backend: local</code>）</li>
+<li>本地向量库</li>
 <li>本地 GGUF embedding 模型</li>
 </ul>
-<p>而大多数用户使用的是：</p>
+<p>大多数用户使用的是：</p>
 <ul>
 <li>Linux + Docker</li>
 <li>云端 embedding API</li>
 <li>云端&#x2F;托管向量数据库</li>
 <li>较旧的 Python 版本</li>
 </ul>
-<p>所以这条「本地 + Windows + 新 Python」的路径测试覆盖较少。</p>
-<p>另外这个 bug 是「半坏」的：</p>
-<ul>
-<li>服务能启动</li>
-<li>记忆文件能生成</li>
-<li>只有搜索时静默返回空</li>
-</ul>
-<p>这种问题往往最难被发现。</p>
-<h2 id="四、排查经验总结"><a href="#四、排查经验总结" class="headerlink" title="四、排查经验总结"></a>四、排查经验总结</h2><p>这次最大的收获是：<strong>看到「表面正常」时要学会怀疑更深一层。</strong></p>
-<p>排查思路：</p>
-<ol>
-<li>先确认服务健康：<code>/health</code></li>
-<li>再确认记忆文件是否存在：<code>ov ls viking://user/default/memories</code></li>
-<li>再用命令行直接搜：<code>ov find</code></li>
-<li>最后一定去看<strong>服务日志</strong>——日志里的堆栈往往才是真正原因</li>
-</ol>
-<p>这题如果没有看服务日志，可能永远定位不到 <code>xxhash</code> 这种「八竿子打不着」的地方。</p>
-<h2 id="五、最终状态"><a href="#五、最终状态" class="headerlink" title="五、最终状态"></a>五、最终状态</h2><ul>
-<li>插件已装在 dsh web profile</li>
-<li>OpenViking 服务已从 <code>D:\OpenViking</code> 正常运行</li>
-<li>记忆写入、搜索都正常</li>
-<li>LoopingIsle 项目目录已保持干净</li>
-</ul>
-<p>相关补丁和说明已整理成一个仓库：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">https://github.com/Retr67/openviking-xxhash-fix</span><br></pre></td></tr></table></figure>
+<p>所以这条本地路径测试覆盖较少。</p>
+<h2 id="额外注意"><a href="#额外注意" class="headerlink" title="额外注意"></a>额外注意</h2><p>如果只是移动了 OpenViking 目录导致向量库元数据路径不匹配，可以在配置中加：</p>
+<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;embedding&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;allow_metadata_override&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
 
-<h2 id="六、给后来者的话"><a href="#六、给后来者的话" class="headerlink" title="六、给后来者的话"></a>六、给后来者的话</h2><ol>
-<li>OpenViking 是独立服务端，dsh 插件只是客户端桥，两者都要配好。</li>
-<li>如果只用 LLM API，注意它不一定支持 embedding，可能需要本地模型。</li>
-<li>本地向量库 + 新 Python + Windows 是容易踩雷的组合，建议多看服务日志。</li>
-<li>遇到「文件生成了但搜不到」，多半是索引&#x2F;向量写入层出了问题，而不是记忆本身没存。</li>
-</ol>
+<p>前提是模型没有换、维度没有变。</p>
 
       
     </div>
