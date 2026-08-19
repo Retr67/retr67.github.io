@@ -1,3 +1,5 @@
+https://retr67.github.io/2026/08/19/%E8%A7%A3%E5%86%B3%E9%85%92%E9%A6%86%E4%BD%BF%E7%94%A8opencodeGo%E7%9A%84luna%E6%8A%A5badQuest%E7%9A%84%E9%97%AE%E9%A2%98/
+https://retr67.github.io/2026/08/19/dsh%E6%8F%92%E4%BB%B6%E7%AE%A1%E7%90%86%E5%99%A8/
 https://retr67.github.io/2026/08/18/openviking-xxhash-fix/
 https://retr67.github.io/2026/08/18/blog-modlens-vision-and-key-rotation/
 https://retr67.github.io/2026/07/26/%E8%B6%85%E6%97%B6%E7%A9%BA%E8%BE%89%E5%A4%9C%E5%A7%AC/
@@ -147,3 +149,11 @@ https://retr67.github.io/tags/%E5%90%88%E4%BD%9C%E6%B8%B8%E6%88%8F/
 https://retr67.github.io/tags/modlens/
 https://retr67.github.io/tags/DSH/
 https://retr67.github.io/tags/OpenViking/
+https://retr67.github.io/tags/dsh/
+https://retr67.github.io/tags/dsh-plugin/
+https://retr67.github.io/tags/%E6%8F%92%E4%BB%B6%E7%AE%A1%E7%90%86%E5%99%A8/
+https://retr67.github.io/tags/%E9%85%92%E9%A6%86/
+https://retr67.github.io/tags/SillyTaven/
+https://retr67.github.io/tags/opencodeGo/
+https://retr67.github.io/tags/luna/
+https://retr67.github.io/tags/badQuest/
