@@ -1,3 +1,4 @@
+https://retr67.github.io/2026/08/23/FIXModelError/
 https://retr67.github.io/2026/08/19/%E8%A7%A3%E5%86%B3%E9%85%92%E9%A6%86%E4%BD%BF%E7%94%A8opencodeGo%E7%9A%84luna%E6%8A%A5badQuest%E7%9A%84%E9%97%AE%E9%A2%98/
 https://retr67.github.io/2026/08/19/dsh%E6%8F%92%E4%BB%B6%E7%AE%A1%E7%90%86%E5%99%A8/
 https://retr67.github.io/2026/08/18/openviking-xxhash-fix/
@@ -157,3 +158,4 @@ https://retr67.github.io/tags/SillyTaven/
 https://retr67.github.io/tags/opencodeGo/
 https://retr67.github.io/tags/luna/
 https://retr67.github.io/tags/badQuest/
+https://retr67.github.io/tags/modelError/
