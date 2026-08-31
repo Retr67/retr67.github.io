@@ -1,3 +1,4 @@
+https://retr67.github.io/2026/09/01/AMD%E6%98%BE%E5%8D%A1%E8%B7%91%E9%80%9AMiniMax-H3%E8%A7%86%E9%A2%91%E5%85%A8%E5%AE%B6%E6%A1%B6-ZLUDA%E4%B8%8EGGUF%E6%8E%92%E9%94%99%E5%AE%9E%E5%BD%95/
 https://retr67.github.io/2026/08/26/%E8%BF%99%E4%B8%AA%E5%BA%A7%E4%BD%8D%E6%9C%89%E4%BA%BA%E5%9D%90%E5%90%97/
 https://retr67.github.io/2026/08/23/FIXModelError/
 https://retr67.github.io/2026/08/19/%E8%A7%A3%E5%86%B3%E9%85%92%E9%A6%86%E4%BD%BF%E7%94%A8opencodeGo%E7%9A%84luna%E6%8A%A5badQuest%E7%9A%84%E9%97%AE%E9%A2%98/
@@ -162,3 +163,10 @@ https://retr67.github.io/tags/badQuest/
 https://retr67.github.io/tags/modelError/
 https://retr67.github.io/tags/%E5%8D%95%E4%BA%BA%E6%B8%B8%E6%88%8F/
 https://retr67.github.io/tags/%E8%AF%84%E6%B5%8B/
+https://retr67.github.io/tags/MiniMax/
+https://retr67.github.io/tags/%E8%A7%86%E9%A2%91%E7%94%9F%E6%88%90/
+https://retr67.github.io/tags/ZLUDA/
+https://retr67.github.io/tags/AMD/
+https://retr67.github.io/tags/ComfyUI/
+https://retr67.github.io/tags/%E6%8E%92%E9%94%99/
+https://retr67.github.io/tags/AI%E6%96%87%E7%AB%A0/
