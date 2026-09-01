@@ -19,15 +19,15 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"retr67.github.io","root":"/","images":"/images","scheme":"Muse","darkmode":false,"version":"8.22.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js"></script>
 
-    <meta name="description" content="AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录 8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。   📖 前言MiniMax-H3 是支持**文本生成视频（t2va）、首尾帧生成视频（ref2va）、图像生成视频（f">
+    <meta name="description" content="AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录 8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。   📖 前言MiniMax-H3 是支持文本生成视频（t2va）、首尾帧生成视频（ref2va）、图像生成视频（fl2">
 <meta property="og:type" content="article">
 <meta property="og:title" content="AMD显卡跑通MiniMax-H3视频全家桶：ZLUDA与GGUF排错实录">
 <meta property="og:url" content="https://retr67.github.io/2026/09/01/AMD%E6%98%BE%E5%8D%A1%E8%B7%91%E9%80%9AMiniMax-H3%E8%A7%86%E9%A2%91%E5%85%A8%E5%AE%B6%E6%A1%B6-ZLUDA%E4%B8%8EGGUF%E6%8E%92%E9%94%99%E5%AE%9E%E5%BD%95/index.html">
 <meta property="og:site_name" content="Retr67的小站">
-<meta property="og:description" content="AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录 8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。   📖 前言MiniMax-H3 是支持**文本生成视频（t2va）、首尾帧生成视频（ref2va）、图像生成视频（f">
+<meta property="og:description" content="AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录 8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。   📖 前言MiniMax-H3 是支持文本生成视频（t2va）、首尾帧生成视频（ref2va）、图像生成视频（fl2">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-08-31T18:36:00.000Z">
-<meta property="article:modified_time" content="2026-08-31T18:37:53.506Z">
+<meta property="article:modified_time" content="2026-09-01T22:15:28.295Z">
 <meta property="article:author" content="Retr67">
 <meta property="article:tag" content="MiniMax">
 <meta property="article:tag" content="视频生成">
@@ -36,6 +36,7 @@
 <meta property="article:tag" content="ComfyUI">
 <meta property="article:tag" content="排错">
 <meta property="article:tag" content="AI文章">
+<meta property="article:tag" content="LoRA">
 <meta name="twitter:card" content="summary">
 
 
@@ -117,7 +118,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#AMD-%E6%98%BE%E5%8D%A1%E8%B7%91%E9%80%9A-MiniMax-H3-%E8%A7%86%E9%A2%91%E5%85%A8%E5%AE%B6%E6%A1%B6%EF%BC%9AZLUDA-GGUF-Q4-K-%E5%AE%8C%E6%95%B4%E5%AE%9E%E5%BD%95"><span class="nav-number">1.</span> <span class="nav-text">AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%96-%E5%89%8D%E8%A8%80"><span class="nav-number">1.1.</span> <span class="nav-text">📖 前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%8E%AF-%E6%9C%80%E7%BB%88%E6%96%B9%E6%A1%88"><span class="nav-number">1.2.</span> <span class="nav-text">🎯 最终方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%A7%B1-%E6%96%B9%E6%A1%88%E9%80%89%E5%9E%8B%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E6%8A%9B%E5%BC%83-int8-%E8%BD%AC%E6%8A%95-GGUF"><span class="nav-number">1.3.</span> <span class="nav-text">🧱 方案选型：为什么抛弃 int8 转投 GGUF</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%A6-%E6%A8%A1%E5%9E%8B%E4%B8%8E%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="nav-number">1.4.</span> <span class="nav-text">📦 模型与文件清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%A7-%E5%89%8D%E7%BD%AE%E8%A1%A5%E4%B8%81%EF%BC%9A%E8%AE%A9-ComfyUI-%E5%9C%A8-ZLUDA-%E4%B8%8A%E6%B4%BB%E4%B8%8B%E6%9D%A5"><span class="nav-number">1.5.</span> <span class="nav-text">🔧 前置补丁：让 ComfyUI 在 ZLUDA 上活下来</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E2%9A%A0%EF%B8%8F-%E6%9C%80%E5%A4%A7%E7%9A%84%E8%AE%A4%E7%9F%A5%E5%9D%91%EF%BC%9AZLUDA-%E4%BC%AA%E9%80%A0%E7%AE%97%E5%8A%9B"><span class="nav-number">1.5.1.</span> <span class="nav-text">⚠️ 最大的认知坑：ZLUDA 伪造算力</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%90%9B-GGUF-%E4%B8%93%E5%B1%9E%E5%B7%A8%E5%9D%91%EF%BC%9ABF16-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%EF%BC%88%E6%9C%AC%E6%96%87%E6%9C%80%E5%80%BC%E9%92%B1%E7%9A%84%E9%83%A8%E5%88%86%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">🐛 GGUF 专属巨坑：BF16 反序列化（本文最值钱的部分）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%A7%A9-%E5%B7%A5%E4%BD%9C%E6%B5%81%E6%90%AD%E5%BB%BA%EF%BC%9A%E9%AD%94%E6%94%B9%E7%89%88%E8%8A%82%E7%82%B9%E7%9A%84%E5%9D%91"><span class="nav-number">1.7.</span> <span class="nav-text">🧩 工作流搭建：魔改版节点的坑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%97%BA%EF%B8%8F-%E6%8E%92%E9%94%99%E8%B7%AF%E7%BA%BF%E5%9B%BE%EF%BC%88%E5%88%A4%E6%96%AD%E8%A1%A5%E4%B8%81%E6%98%AF%E5%90%A6%E7%94%9F%E6%95%88%E7%9A%84%E6%A0%87%E5%B0%BA%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">🗺️ 排错路线图（判断补丁是否生效的标尺）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%92%BE-%E5%86%85%E5%AD%98%E4%B8%8E%E6%80%A7%E8%83%BD%E7%AE%A1%E7%90%86"><span class="nav-number">1.9.</span> <span class="nav-text">💾 内存与性能管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%AE-%E4%B8%8B%E4%B8%80%E6%AD%A5"><span class="nav-number">1.10.</span> <span class="nav-text">🔮 下一步</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%9D-%E5%86%99%E5%9C%A8%E6%9C%80%E5%90%8E"><span class="nav-number">1.11.</span> <span class="nav-text">📝 写在最后</span></a></li></ol></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#AMD-%E6%98%BE%E5%8D%A1%E8%B7%91%E9%80%9A-MiniMax-H3-%E8%A7%86%E9%A2%91%E5%85%A8%E5%AE%B6%E6%A1%B6%EF%BC%9AZLUDA-GGUF-Q4-K-%E5%AE%8C%E6%95%B4%E5%AE%9E%E5%BD%95"><span class="nav-number">1.</span> <span class="nav-text">AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%96-%E5%89%8D%E8%A8%80"><span class="nav-number">1.1.</span> <span class="nav-text">📖 前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%8E%AF-%E6%9C%80%E7%BB%88%E6%96%B9%E6%A1%88"><span class="nav-number">1.2.</span> <span class="nav-text">🎯 最终方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%A7%B1-%E6%96%B9%E6%A1%88%E9%80%89%E5%9E%8B%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E6%8A%9B%E5%BC%83-int8-%E8%BD%AC%E6%8A%95-GGUF"><span class="nav-number">1.3.</span> <span class="nav-text">🧱 方案选型：为什么抛弃 int8 转投 GGUF</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%A6-%E6%A8%A1%E5%9E%8B%E4%B8%8E%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="nav-number">1.4.</span> <span class="nav-text">📦 模型与文件清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%A7-%E5%89%8D%E7%BD%AE%E8%A1%A5%E4%B8%81%EF%BC%9A%E8%AE%A9-ComfyUI-%E5%9C%A8-ZLUDA-%E4%B8%8A%E6%B4%BB%E4%B8%8B%E6%9D%A5"><span class="nav-number">1.5.</span> <span class="nav-text">🔧 前置补丁：让 ComfyUI 在 ZLUDA 上活下来</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E2%9A%A0%EF%B8%8F-%E6%9C%80%E5%A4%A7%E7%9A%84%E8%AE%A4%E7%9F%A5%E5%9D%91%EF%BC%9AZLUDA-%E4%BC%AA%E9%80%A0%E7%AE%97%E5%8A%9B"><span class="nav-number">1.5.1.</span> <span class="nav-text">⚠️ 最大的认知坑：ZLUDA 伪造算力</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%90%9B-GGUF-%E4%B8%93%E5%B1%9E%E5%B7%A8%E5%9D%91%EF%BC%9ABF16-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%EF%BC%88%E6%9C%AC%E6%96%87%E6%9C%80%E5%80%BC%E9%92%B1%E7%9A%84%E9%83%A8%E5%88%86%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">🐛 GGUF 专属巨坑：BF16 反序列化（本文最值钱的部分）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%A7%A9-%E5%B7%A5%E4%BD%9C%E6%B5%81%E6%90%AD%E5%BB%BA%EF%BC%9A%E9%AD%94%E6%94%B9%E7%89%88%E8%8A%82%E7%82%B9%E7%9A%84%E5%9D%91"><span class="nav-number">1.7.</span> <span class="nav-text">🧩 工作流搭建：魔改版节点的坑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%97%BA%EF%B8%8F-%E6%8E%92%E9%94%99%E8%B7%AF%E7%BA%BF%E5%9B%BE%EF%BC%88%E5%88%A4%E6%96%AD%E8%A1%A5%E4%B8%81%E6%98%AF%E5%90%A6%E7%94%9F%E6%95%88%E7%9A%84%E6%A0%87%E5%B0%BA%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">🗺️ 排错路线图（判断补丁是否生效的标尺）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%92%BE-%E5%86%85%E5%AD%98%E4%B8%8E%E6%80%A7%E8%83%BD%E7%AE%A1%E7%90%86"><span class="nav-number">1.9.</span> <span class="nav-text">💾 内存与性能管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%8A-%E7%95%AA%E5%A4%96%EF%BC%9A%E8%83%BD%E5%87%BA%E7%94%BB%E9%9D%A2%EF%BC%8C%E4%BD%86%E4%B8%BA%E4%BB%80%E4%B9%88%E6%B2%A1%E5%A3%B0%E9%9F%B3%EF%BC%9F"><span class="nav-number">1.10.</span> <span class="nav-text">🔊 番外：能出画面，但为什么没声音？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%B9%E5%9B%A0%E4%B8%80%EF%BC%9A%E8%A7%86%E9%A2%91%E5%92%8C%E9%9F%B3%E9%A2%91%E6%98%AF%E4%B8%A4%E5%A5%97%E7%8B%AC%E7%AB%8B-VAE"><span class="nav-number">1.10.1.</span> <span class="nav-text">根因一：视频和音频是两套独立 VAE</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%B9%E5%9B%A0%E4%BA%8C%EF%BC%9A%E9%9F%B3%E9%A2%91-latent-%E8%A2%AB%E9%9D%99%E9%BB%98%E4%B8%A2%E5%BC%83"><span class="nav-number">1.10.2.</span> <span class="nav-text">根因二：音频 latent 被静默丢弃</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E6%B3%95%EF%BC%9A%E9%80%9A%E7%94%A8%E9%9F%B3%E9%A2%91%E8%A7%A3%E7%A0%81%E8%8A%82%E7%82%B9%E5%B0%B1%E5%A4%9F"><span class="nav-number">1.10.3.</span> <span class="nav-text">解法：通用音频解码节点就够</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E2%9A%A1-%E7%95%AA%E5%A4%96%E4%BA%8C%EF%BC%9A4-%E6%AD%A5%E5%8A%A0%E9%80%9F-LoRA%EF%BC%8C%E4%B8%8E%E2%80%9D%E9%9D%99%E9%BB%98%E5%A4%B1%E6%95%88%E2%80%9D%E8%BF%99%E4%B8%AA%E9%9A%90%E5%BD%A2%E6%9D%80%E6%89%8B"><span class="nav-number">1.11.</span> <span class="nav-text">⚡ 番外二：4 步加速 LoRA，与”静默失效”这个隐形杀手</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9D%91%E4%B8%80%EF%BC%9A768p-%E7%89%88%E7%9A%84-shift-%E6%98%AF-6-3%EF%BC%8C%E4%B8%8D%E6%98%AF-12-3"><span class="nav-number">1.11.1.</span> <span class="nav-text">坑一：768p 版的 shift 是 6&#x2F;3，不是 12&#x2F;3</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9D%91%E4%BA%8C%EF%BC%9ALoRA-%E5%8A%A0%E8%BD%BD%E5%A4%B1%E8%B4%A5%E6%98%AF%E9%9D%99%E9%BB%98%E7%9A%84"><span class="nav-number">1.11.2.</span> <span class="nav-text">坑二：LoRA 加载失败是静默的</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%82%E6%95%B0%E5%AF%B9%E7%85%A7"><span class="nav-number">1.11.3.</span> <span class="nav-text">参数对照</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%A6%E5%A4%96%E4%B8%A4%E4%B8%AA%E5%B0%8F%E7%9F%A5%E8%AF%86"><span class="nav-number">1.11.4.</span> <span class="nav-text">另外两个小知识</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%B2%E7%9F%A5%E5%8F%96%E8%88%8D"><span class="nav-number">1.11.5.</span> <span class="nav-text">已知取舍</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%AE-%E4%B8%8B%E4%B8%80%E6%AD%A5"><span class="nav-number">1.12.</span> <span class="nav-text">🔮 下一步</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%9D-%E5%86%99%E5%9C%A8%E6%9C%80%E5%90%8E"><span class="nav-number">1.13.</span> <span class="nav-text">📝 写在最后</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -136,7 +137,7 @@
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">113</span>
+        <span class="site-state-item-count">114</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -191,9 +192,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-09-01 02:36:00 / 修改时间：02:37:53" itemprop="dateCreated datePublished" datetime="2026-09-01T02:36:00+08:00">2026-09-01</time>
+      <time title="创建时间：2026-09-01 02:36:00" itemprop="dateCreated datePublished" datetime="2026-09-01T02:36:00+08:00">2026-09-01</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-02 06:15:28" itemprop="dateModified" datetime="2026-09-02T06:15:28+08:00">2026-09-02</time>
     </span>
 
   
@@ -209,7 +216,7 @@
 <p>8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？<br>答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。</p>
 </blockquote>
 <hr>
-<h2 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h2><p>MiniMax-H3 是支持**文本生成视频（t2va）、首尾帧生成视频（ref2va）、图像生成视频（fl2va）**三合一的音视频联合生成模型，权重高达 41GB。正常来说这是 24GB 显存显卡的玩具。</p>
+<h2 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h2><p>MiniMax-H3 是支持文本生成视频（t2va）、首尾帧生成视频（ref2va）、图像生成视频（fl2va）三合一的音视频联合生成模型，权重高达 41GB。正常来说这是 24GB 显存显卡的玩具。</p>
 <p>但我手里只有一张 <strong>AMD RX 6650 XT（8GB 显存）</strong>，还吃不到 CUDA 生态——只能靠 ZLUDA 翻译层把 CUDA 调用翻译成 AMD 的 HIP。整个过程中我换了两次技术方案、打了 8 个补丁、排了 14 轮错，最终用 <strong>GGUF Q4_K 量化</strong>把模型压到 10.6GB，成功跑进采样循环。</p>
 <p>这篇文章是完整的操作记录和排错路线图，希望能帮你少走弯路。</p>
 <hr>
@@ -405,11 +412,170 @@
 <li>崩溃后<strong>必查残留进程</strong>：python.exe 可能残留占 20GB+ 内存，清掉再重启</li>
 </ul>
 <hr>
+<h2 id="🔊-番外：能出画面，但为什么没声音？"><a href="#🔊-番外：能出画面，但为什么没声音？" class="headerlink" title="🔊 番外：能出画面，但为什么没声音？"></a>🔊 番外：能出画面，但为什么没声音？</h2><p>跑通后我兴冲冲打开视频——画面正常，<strong>但一点声音都没有</strong>。这是 H3 最容易踩的<strong>静默失败</strong>：不报错，就是没音轨。</p>
+<h3 id="根因一：视频和音频是两套独立-VAE"><a href="#根因一：视频和音频是两套独立-VAE" class="headerlink" title="根因一：视频和音频是两套独立 VAE"></a>根因一：视频和音频是两套独立 VAE</h3><p>MiniMax H3 的”音视频联合生成”指的是<strong>采样过程联合</strong>，但解码阶段两套 VAE 完全分开：</p>
+<table>
+<thead>
+<tr>
+<th>VAE</th>
+<th>文件</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>视频 VAE</td>
+<td><code>minimax_h3_video_vae_fp16.safetensors</code>（5.2GB）</td>
+<td>解画面</td>
+</tr>
+<tr>
+<td><strong>音频 VAE</strong></td>
+<td><code>minimax_h3_audio_vae_fp32.safetensors</code>（577MB）</td>
+<td>解声音（DAC + BigVGAN 架构）</td>
+</tr>
+</tbody></table>
+<p>官方仓库两个文件分开提供，我一开始只下了视频 VAE——<strong>根本没音频解码器，当然没声音</strong>。</p>
+<h3 id="根因二：音频-latent-被静默丢弃"><a href="#根因二：音频-latent-被静默丢弃" class="headerlink" title="根因二：音频 latent 被静默丢弃"></a>根因二：音频 latent 被静默丢弃</h3><p>采样器输出的 latent 是个嵌套张量对：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">NestedTensor( video[B,24,T,H/16,W/16] , audio[B,32,2,T40] )</span><br></pre></td></tr></table></figure>
+
+<p>普通的 <code>VAEDecode</code> 只解 video，<strong>audio 分支被直接扔掉，而且不报任何错</strong>。合流节点 <code>CreateVideo</code> 的 <code>audio</code> 输入空着，出来的自然是哑巴视频。</p>
+<h3 id="解法：通用音频解码节点就够"><a href="#解法：通用音频解码节点就够" class="headerlink" title="解法：通用音频解码节点就够"></a>解法：通用音频解码节点就够</h3><p>一开始我以为要装 MiniMax 专属音频节点，翻源码才发现 ComfyUI 的通用节点 <code>VAEDecodeAudio</code> 内部已经处理了嵌套张量：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">latent = samples[<span class="string">&quot;samples&quot;</span>]</span><br><span class="line"><span class="keyword">if</span> latent.is_nested:</span><br><span class="line">    latent = latent.unbind()[-<span class="number">1</span>]   <span class="comment"># 取最后一个 = audio</span></span><br></pre></td></tr></table></figure>
+
+<p>所以工作流加两个节点就行：</p>
+<table>
+<thead>
+<tr>
+<th>节点</th>
+<th>配置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>VAELoader</code></td>
+<td>加载音频 VAE（577MB）</td>
+</tr>
+<tr>
+<td><code>VAEDecodeAudio</code></td>
+<td>输入接采样器 latent + 音频 VAE</td>
+</tr>
+<tr>
+<td><code>CreateVideo</code></td>
+<td><code>audio</code> 输入接上音频解码结果</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>💡 <strong>避坑提示</strong>：音频 VAE 的识别键是 <code>pre_block.attn.zero_k_bias</code>（ComfyUI 靠它判断是不是 H3 音频 VAE）。下载后建议验证一下这个键存在，同时确认没有 <code>decoder.model.0.weight_g</code>——否则会被误判成 MiniMax Music3 的 DAV 模型。</p>
+</blockquote>
+<hr>
+<h2 id="⚡-番外二：4-步加速-LoRA，与”静默失效”这个隐形杀手"><a href="#⚡-番外二：4-步加速-LoRA，与”静默失效”这个隐形杀手" class="headerlink" title="⚡ 番外二：4 步加速 LoRA，与”静默失效”这个隐形杀手"></a>⚡ 番外二：4 步加速 LoRA，与”静默失效”这个隐形杀手</h2><p>10 步采样在 ZLUDA 上太慢，于是加上官方的 4 步 turbo LoRA（1.87GB）。本以为只是拖个节点的事，结果又踩了两个坑——其中一个<strong>不会报任何错</strong>。</p>
+<h3 id="坑一：768p-版的-shift-是-6-3，不是-12-3"><a href="#坑一：768p-版的-shift-是-6-3，不是-12-3" class="headerlink" title="坑一：768p 版的 shift 是 6&#x2F;3，不是 12&#x2F;3"></a>坑一：768p 版的 shift 是 6&#x2F;3，不是 12&#x2F;3</h3><p>同一个仓库里挂着好几个 turbo LoRA，超参并不通用。官方规格表：</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>训练分辨率</th>
+<th>训练 shift (video&#x2F;audio)</th>
+<th>推荐推理步数</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>4-step v0.1</td>
+<td>544p</td>
+<td>12 &#x2F; 3</td>
+<td>4</td>
+</tr>
+<tr>
+<td>8-step v1.0</td>
+<td>544p</td>
+<td>12 &#x2F; 3</td>
+<td>8</td>
+</tr>
+<tr>
+<td><strong>4-step v1.0 768p</strong></td>
+<td><strong>768p</strong></td>
+<td><strong>6 &#x2F; 3</strong></td>
+<td><strong>4</strong></td>
+</tr>
+<tr>
+<td>8-step v1.0 768p</td>
+<td>768p</td>
+<td>6 &#x2F; 3</td>
+<td>8</td>
+</tr>
+</tbody></table>
+<p>只看”几步”去抄参数是错的，必须同时核对<strong>版本</strong>和<strong>分辨率</strong>两列。基础版工作流用的 shift 是 12&#x2F;3，换上 768p 的 LoRA 后必须改成 <strong>6&#x2F;3</strong>，否则 sigma 网格对不上蒸馏时学到的轨迹，步数再少也白搭。</p>
+<h3 id="坑二：LoRA-加载失败是静默的"><a href="#坑二：LoRA-加载失败是静默的" class="headerlink" title="坑二：LoRA 加载失败是静默的"></a>坑二：LoRA 加载失败是静默的</h3><p>这是本文第二个”最值钱”的坑。</p>
+<p>给模型挂上 LoRA，点 Queue，<strong>没有任何报错</strong>，视频照常生成，进度条照常走完——但速度和画质<strong>一点没变</strong>。LoRA 根本没生效。</p>
+<p>原因出在键名前缀：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">主模型 state_dict :  blocks.0.attn.qkv_proj.weight            ← 无前缀</span><br><span class="line">官方 turbo LoRA   :  diffusion_model.blocks.0.attn.qkv_proj   ← 有 diffusion_model. 前缀</span><br></pre></td></tr></table></figure>
+
+<p>ComfyUI 的 <code>comfy/lora.py</code> 里，<code>model_lora_keys_unet()</code> 给 Flux、SD3、Kandinsky5、LTXV、QwenImage 等<strong>每个架构单独写了一段键名映射</strong>——但 MiniMax H3 是新增架构，<strong>还没有它的分支</strong>，于是只能落到”无前缀”的通用映射上，命中率 <strong>0 &#x2F; 208</strong>。</p>
+<p>而 <code>load_lora_for_models()</code> 匹配不到键时，只会在日志里打一行 <code>lora key not loaded</code>，然后<strong>继续正常执行</strong>。生成结果完全合法，只是 LoRA 的贡献为零——白占 1.87GB 显存和几十秒加载时间。</p>
+<p><strong>怎么验证</strong>：不需要真去加载 10GB 模型，纯静态比对键名即可。</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sd_keys 取自 GGUF 的 tensor 名；mods 取自 LoRA 的 lora_A/lora_B 键去后缀</span></span><br><span class="line">key_map = &#123;k[:-<span class="built_in">len</span>(<span class="string">&quot;.weight&quot;</span>)]: k <span class="keyword">for</span> k <span class="keyword">in</span> sd_keys&#125;   <span class="comment"># 通用映射（补丁前）</span></span><br><span class="line"><span class="comment"># → MATCHED: 0     MISSING: 208</span></span><br><span class="line"></span><br><span class="line">key_map[<span class="string">&quot;diffusion_model.&quot;</span> + k[:-<span class="number">7</span>]] = k              <span class="comment"># 补上前缀映射</span></span><br><span class="line"><span class="comment"># → MATCHED: 208   MISSING: 0     ✅</span></span><br></pre></td></tr></table></figure>
+
+<p><strong>怎么修</strong>：在 <code>comfy/lora.py</code> 的 <code>return key_map</code> 之前加一段：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> <span class="built_in">isinstance</span>(model, comfy.model_base.MiniMaxH3):</span><br><span class="line">    <span class="keyword">for</span> k <span class="keyword">in</span> sdk:</span><br><span class="line">        <span class="keyword">if</span> k.endswith(<span class="string">&quot;.weight&quot;</span>):</span><br><span class="line">            key_lora = k[:-<span class="built_in">len</span>(<span class="string">&quot;.weight&quot;</span>)]</span><br><span class="line">            key_map[<span class="string">&quot;diffusion_model.&#123;&#125;&quot;</span>.<span class="built_in">format</span>(key_lora)] = k</span><br><span class="line">            key_map[<span class="string">&quot;transformer.&#123;&#125;&quot;</span>.<span class="built_in">format</span>(key_lora)] = k</span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>⚠️ 改的是核心文件，<strong>必须重启 ComfyUI</strong> 才生效。重启后跑一次，日志里<strong>不应</strong>再出现 <code>lora key not loaded</code>。</p>
+</blockquote>
+<p>顺带一提，这个 LoRA 用的是 PEFT 命名（<code>lora_A.weight</code> &#x2F; <code>lora_B.weight</code>），不是 ComfyUI 常见的 <code>lora_up</code> &#x2F; <code>lora_down</code>。这个是<strong>没问题的</strong>——ComfyUI 的 <code>weight_adapter</code> 已经内置了 diffusers2 分支来处理它。</p>
+<h3 id="参数对照"><a href="#参数对照" class="headerlink" title="参数对照"></a>参数对照</h3><table>
+<thead>
+<tr>
+<th>参数</th>
+<th>基础版</th>
+<th>4 步加速版</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>节点链</td>
+<td>加载器 → SigmaShift</td>
+<td>加载器 → <strong>LoraLoaderModelOnly</strong> → SigmaShift</td>
+</tr>
+<tr>
+<td><code>strength_model</code></td>
+<td>—</td>
+<td>1.0</td>
+</tr>
+<tr>
+<td><code>steps</code></td>
+<td>10</td>
+<td><strong>4</strong></td>
+</tr>
+<tr>
+<td><code>shift_video</code></td>
+<td>12</td>
+<td><strong>6</strong></td>
+</tr>
+<tr>
+<td><code>shift_audio</code></td>
+<td>3</td>
+<td>3</td>
+</tr>
+<tr>
+<td>sampler &#x2F; scheduler</td>
+<td>euler &#x2F; simple</td>
+<td>euler &#x2F; simple</td>
+</tr>
+</tbody></table>
+<p>注意 LoRA 必须插在 <strong>SigmaShift 之前</strong>。</p>
+<h3 id="另外两个小知识"><a href="#另外两个小知识" class="headerlink" title="另外两个小知识"></a>另外两个小知识</h3><p><strong>GGUF 量化模型叠 LoRA 会不会爆显存？</strong> 不会。ComfyUI-GGUF 对量化权重走的是<strong>延迟 patch</strong>：保持量化状态，把 patch 挂上去，等到真正 forward 时才逐层反量化合并——不会一次性把 10GB 模型展开成 bf16。对 8GB 显卡相当友好。</p>
+<p><strong>帧数不是随便填的。</strong> 官方工作流用 <code>max(5, round(a*24)) + (5 - (max(5, round(a*24)) % 17)) % 17</code> 来对齐帧数，等价于要求 <code>length % 17 == 5</code>（H3 的时间维压缩对齐）。124 帧正好合规（124 &#x3D; 7×17 + 5）。</p>
+<h3 id="已知取舍"><a href="#已知取舍" class="headerlink" title="已知取舍"></a>已知取舍</h3><ul>
+<li>turbo 模式下<strong>音频与运动质量略低于</strong>全步数版本（ComfyUI 官方文档口径）。</li>
+<li>LoRA 训练分辨率是 768p（1344×768），若实际跑 480p 则低于原生画布，画质增益会打折。</li>
+<li>显存吃紧时，把 <code>cfg</code> 降到 1.0 可以再省掉一半前向计算（负向不再参与）。</li>
+</ul>
+<hr>
 <h2 id="🔮-下一步"><a href="#🔮-下一步" class="headerlink" title="🔮 下一步"></a>🔮 下一步</h2><ul>
-<li><input disabled="" type="checkbox"> 完整验证首条视频产出（VAE decode + 音频分支）</li>
+<li><input checked="" disabled="" type="checkbox"> 480P 5 秒视频跑通</li>
+<li><input checked="" disabled="" type="checkbox"> 音频链路修复（音频 VAE + 通用音频解码节点，见上节）</li>
+<li><input checked="" disabled="" type="checkbox"> 4 步 turbo LoRA 就位（含键名前缀补丁，见上节）</li>
+<li><input disabled="" type="checkbox"> 验证音画同步与音质</li>
+<li><input disabled="" type="checkbox"> 验证 4 步加速的实际提速倍数与画质变化</li>
 <li><input disabled="" type="checkbox"> 测 t2va（纯文本）与 ref2va（首尾帧）变体</li>
 <li><input disabled="" type="checkbox"> 摸底 8GB 显存能扛的最大分辨率&#x2F;帧数</li>
-<li><input disabled="" type="checkbox"> 若音频分支报错，大概率在 audio 分支的量化算子，思路同上</li>
 </ul>
 <hr>
 <h2 id="📝-写在最后"><a href="#📝-写在最后" class="headerlink" title="📝 写在最后"></a>📝 写在最后</h2><p>整个过程最大的体会：<strong>AMD 跑 AI 不是不行，是坑多</strong>。ZLUDA 伪造算力、分配器不兼容、GGUF 反序列化漏分支……每一个都是”看起来像玄学、查下去全是逻辑”的问题。</p>
@@ -436,6 +602,7 @@
               <a href="/tags/ComfyUI/" rel="tag"># ComfyUI</a>
               <a href="/tags/%E6%8E%92%E9%94%99/" rel="tag"># 排错</a>
               <a href="/tags/AI%E6%96%87%E7%AB%A0/" rel="tag"># AI文章</a>
+              <a href="/tags/LoRA/" rel="tag"># LoRA</a>
           </div>
 
         
