@@ -118,13 +118,13 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">57</span>
+          <span class="site-state-item-count">58</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">114</span>
+        <span class="site-state-item-count">122</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -141,6 +141,416 @@
     </div>
 
     <div class="main-inner index posts-expand">
+
+    
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
+    <link itemprop="mainEntityOfPage" href="https://retr67.github.io/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Retr67">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Retr67的小站">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="undefined | Retr67的小站">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h2 class="post-title" itemprop="name headline">
+          <a href="/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/" class="post-title-link" itemprop="url">8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测</a>
+        </h2>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-03 04:20:00 / 修改时间：04:20:38" itemprop="dateCreated datePublished" datetime="2026-09-03T04:20:00+08:00">2026-09-03</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+          <h1 id="8GB-显卡本地跑通千问-3-8-27B：llama-cpp-Vulkan-踩坑与实测"><a href="#8GB-显卡本地跑通千问-3-8-27B：llama-cpp-Vulkan-踩坑与实测" class="headerlink" title="8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测"></a>8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测</h1><blockquote>
+<p>8GB 显存的 AMD 显卡，能不能本地跑一个 27B 参数的大语言模型？<br>答案是：能，但只有 <strong>1.5 字&#x2F;秒</strong>。这篇记录我踩过的每一个坑，以及一组证明”这个速度不是没调好”的对照实测。</p>
+</blockquote>
+<hr>
+<h2 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h2><p>Qwen3.8-27B 是 2026 年 8 月发布的 27B 稠密模型，Apache 2.0、原生多模态、256K 上下文，官方还直接出了 GGUF。听起来很适合本地部署——直到你看到体积：<strong>Q4_K_M 量化后仍有 17.7GB</strong>。</p>
+<p>而我手里只有一张 <strong>AMD RX 6650 XT（8GB 显存）</strong>，在 Windows 上还吃不到 ROCm。这条路上我踩了三个坑（下载断线、Git Bash curl 写文件报错、速度莫名只有 1 字&#x2F;秒），最后靠 <strong>llama.cpp Vulkan 版 + 自动分层</strong>跑通，并做了一组五轮对照实测来回答那个最折磨人的问题：<strong>到底是我没调好，还是这台机器就只能这么快？</strong></p>
+<p>答案是后者。这篇文章把结论和证据都摆出来，省得你再花几小时重复我的调参。</p>
+<hr>
+<h2 id="🎯-最终方案"><a href="#🎯-最终方案" class="headerlink" title="🎯 最终方案"></a>🎯 最终方案</h2><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>运行框架</td>
+<td>llama.cpp Vulkan 预编译版（b10760）</td>
+</tr>
+<tr>
+<td>模型形态</td>
+<td><strong>Qwen3.8-27B Q4_K_M GGUF</strong>（17.7GB）</td>
+</tr>
+<tr>
+<td>GPU 方案</td>
+<td><strong>Vulkan 后端</strong>（无需 ROCm）</td>
+</tr>
+<tr>
+<td>显存分配</td>
+<td><strong>自动分层</strong>（不写 <code>-ngl</code>，按空闲显存自动拟合）</td>
+</tr>
+<tr>
+<td>实测速度</td>
+<td><strong>生成 1.5~1.6 字&#x2F;秒</strong>，读入 5~6 字&#x2F;秒</td>
+</tr>
+</tbody></table>
+<p><strong>核心逻辑</strong>：模型远大于显存，绝大多数层只能走内存。既然如此，就不要手动指定塞几层进显卡——交给 llama.cpp 自动拟合，既不会超售，也不用反复试参数。</p>
+<hr>
+<h2 id="🧱-方案选型：为什么是-Q4-K-M-Vulkan"><a href="#🧱-方案选型：为什么是-Q4-K-M-Vulkan" class="headerlink" title="🧱 方案选型：为什么是 Q4_K_M + Vulkan"></a>🧱 方案选型：为什么是 Q4_K_M + Vulkan</h2><h3 id="为什么选-Qwen3-8-27B"><a href="#为什么选-Qwen3-8-27B" class="headerlink" title="为什么选 Qwen3.8-27B"></a>为什么选 Qwen3.8-27B</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>对本地部署的意义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>混合注意力：48 层 Gated DeltaNet（线性）+ 16 层 Gated Attention</td>
+<td>KV 缓存省约 75%，16K 上下文几乎不占显存</td>
+</tr>
+<tr>
+<td>原生多模态</td>
+<td>不用外挂 CLIP 也能走图文</td>
+</tr>
+<tr>
+<td>256K 上下文</td>
+<td>理论上能吃长文档（但本机读入速度下不实用，见实测节）</td>
+</tr>
+<tr>
+<td>Apache 2.0</td>
+<td>商用无顾虑</td>
+</tr>
+<tr>
+<td>官方出 GGUF（ggml-org 仓库）</td>
+<td>不用自己转换权重，开箱即用</td>
+</tr>
+</tbody></table>
+<h3 id="量化档位：8GB-卡只有-Q4-这一个活口"><a href="#量化档位：8GB-卡只有-Q4-这一个活口" class="headerlink" title="量化档位：8GB 卡只有 Q4 这一个活口"></a>量化档位：8GB 卡只有 Q4 这一个活口</h3><table>
+<thead>
+<tr>
+<th>量化</th>
+<th>体积</th>
+<th>8GB 卡可行性</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BF16 &#x2F; FP8</td>
+<td>55GB+</td>
+<td>❌ 想都别想</td>
+</tr>
+<tr>
+<td>Q8_0</td>
+<td>~30GB</td>
+<td>❌</td>
+</tr>
+<tr>
+<td><strong>Q4_K_M</strong></td>
+<td><strong>17.7GB</strong></td>
+<td>✅ 能跑（大部分在内存）</td>
+</tr>
+<tr>
+<td>IQ4_XS &#x2F; Q3_K_XL</td>
+<td>13~14GB</td>
+<td>⚠️ 能跑，但提速有限（见”想更快怎么办”）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>💡 <strong>同系列没有”轻量款”</strong>：<code>Qwen3.8-Flash-Next</code> 听着像小的，实际是 180GB 的巨型 MoE（Q4_K_XL 分片加起来 111GB），比 27B 还难跑。别被名字骗了。</p>
+</blockquote>
+<h3 id="推理后端：Vulkan-是-Windows-AMD-的最优解"><a href="#推理后端：Vulkan-是-Windows-AMD-的最优解" class="headerlink" title="推理后端：Vulkan 是 Windows + AMD 的最优解"></a>推理后端：Vulkan 是 Windows + AMD 的最优解</h3><table>
+<thead>
+<tr>
+<th>路线</th>
+<th>现状</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ROCm &#x2F; HIP 编译版</td>
+<td>Windows 上官方支持长期缺位，编译折磨</td>
+</tr>
+<tr>
+<td><strong>Vulkan 预编译版</strong></td>
+<td><strong>下载解压即用</strong> ✅</td>
+</tr>
+<tr>
+<td>纯 CPU</td>
+<td>最稳，但没有硬件加速</td>
+</tr>
+</tbody></table>
+<p>验证命令：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">llama-server.exe --list-devices</span><br><span class="line"><span class="comment"># Vulkan0: AMD Radeon RX 6650 XT (8176 MiB)</span></span><br></pre></td></tr></table></figure>
+
+<p>看到显卡型号的那一刻基本就成了。</p>
+<hr>
+<h2 id="📦-文件清单"><a href="#📦-文件清单" class="headerlink" title="📦 文件清单"></a>📦 文件清单</h2><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>位置</th>
+<th>大小</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Qwen3.8-27B-Q4_K_M.gguf</code></td>
+<td><code>models/</code></td>
+<td>17.7GB</td>
+<td>主模型（ggml-org 仓库，hf-mirror 下载）</td>
+</tr>
+<tr>
+<td><code>llama-server.exe</code> 等</td>
+<td><code>llama.cpp/</code></td>
+<td>约 200MB</td>
+<td>Vulkan 预编译包</td>
+</tr>
+<tr>
+<td><code>python_resume_download.py</code></td>
+<td><code>models/</code></td>
+<td>—</td>
+<td>断点续传下载器（本文最可复用的一段）</td>
+</tr>
+</tbody></table>
+<p><strong>启动参数</strong>（写成 bat 一键启动）：</p>
+<figure class="highlight bat"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">llama-server.exe ^</span><br><span class="line">  -m &quot;models\Qwen3.<span class="number">8</span>-<span class="number">27</span>B-Q4_K_M.gguf&quot; ^</span><br><span class="line">  -a &quot;Qwen3.<span class="number">8</span>-<span class="number">27</span>B&quot; ^</span><br><span class="line">  --ctx-size <span class="number">16384</span> ^</span><br><span class="line">  --flash-attn on ^</span><br><span class="line">  --jinja ^</span><br><span class="line">  --chat-template-kwargs &quot;&#123;\&quot;reasoning_effort\&quot;: \&quot;medium\&quot;&#125;&quot; ^</span><br><span class="line">  --host <span class="number">127</span>.<span class="number">0</span>.<span class="number">0</span>.<span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>-a</code> 是模型别名。不加的话 API 和客户端里显示的是一长串文件路径，加上就是干净的 <code>Qwen3.8-27B</code>。</li>
+<li><strong>故意不写 <code>-ngl</code></strong>，让 llama.cpp 自动按空闲显存分层——这是本文最重要的一个配置决定，原因见后面 1 字&#x2F;秒那节。</li>
+</ul>
+<hr>
+<h2 id="📥-下载关：17-7GB-怎么不断线"><a href="#📥-下载关：17-7GB-怎么不断线" class="headerlink" title="📥 下载关：17.7GB 怎么不断线"></a>📥 下载关：17.7GB 怎么不断线</h2><p>这一关花的时间比装模型还多，三个拦路虎：</p>
+<h3 id="拦路虎一：GitHub-下不动-→-换镜像"><a href="#拦路虎一：GitHub-下不动-→-换镜像" class="headerlink" title="拦路虎一：GitHub 下不动 → 换镜像"></a>拦路虎一：GitHub 下不动 → 换镜像</h3><p>Release 包直连失败（<code>schannel</code> 报错）。改用 GitHub 加速镜像即可：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">curl -L -C - -o llama.zip <span class="string">&quot;https://ghfast.top/https://github.com/ggml-org/llama.cpp/releases/download/b10760/llama-b10760-bin-win-vulkan-x64.zip&quot;</span></span><br><span class="line"><span class="comment"># 备选：https://gh-proxy.com/https://github.com/...</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="拦路虎二：hf-mirror-长连接被掐断"><a href="#拦路虎二：hf-mirror-长连接被掐断" class="headerlink" title="拦路虎二：hf-mirror 长连接被掐断"></a>拦路虎二：hf-mirror 长连接被掐断</h3><p>模型源站连不上，走镜像站。但<strong>大文件下载到几百 MB 就会被掐断</strong>（连接被对端关闭），必须断点续传 + 失败重试。</p>
+<p>先拿到真实文件大小，免得传完了不知道：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl -s <span class="string">&quot;https://hf-mirror.com/api/models/ggml-org/Qwen3.8-27B-GGUF/tree/main&quot;</span> | \</span><br><span class="line">  python -c <span class="string">&quot;import json,sys;[print(f[&#x27;path&#x27;], f[&#x27;size&#x27;]) for f in json.load(sys.stdin) if f[&#x27;path&#x27;].endswith(&#x27;.gguf&#x27;)]&quot;</span></span><br><span class="line"><span class="comment"># Qwen3.8-27B-Q4_K_M.gguf  18973870432   ← 记下这个数</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="拦路虎三：MSYS-的-curl-写文件报错-23（真坑）"><a href="#拦路虎三：MSYS-的-curl-写文件报错-23（真坑）" class="headerlink" title="拦路虎三：MSYS 的 curl 写文件报错 23（真坑）"></a>拦路虎三：MSYS 的 curl 写文件报错 23（真坑）</h3><p>套上续传循环后，每次都在写入时失败：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl: (23) client returned ERROR on write of 16384 bytes</span><br></pre></td></tr></table></figure>
+
+<p>排查过：磁盘空间充足（30GB+）、文件没被占用（用 Python 往同一文件写字节能成功）。结论是 <strong>Git Bash 自带 curl 在特定写入场景下的毛病</strong>，换实现比继续查快。</p>
+<p><strong>最终方案：Python urllib 断点续传脚本</strong>（改成自己的 URL&#x2F;路径&#x2F;大小就能直接用）：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> os, sys, time, urllib.request</span><br><span class="line"></span><br><span class="line">URL    = <span class="string">&quot;https://hf-mirror.com/ggml-org/Qwen3.8-27B-GGUF/resolve/main/Qwen3.8-27B-Q4_K_M.gguf&quot;</span></span><br><span class="line">PATH   = <span class="string">r&quot;D:\AI-LLM\models\Qwen3.8-27B-Q4_K_M.gguf&quot;</span></span><br><span class="line">TARGET = <span class="number">18973870432</span>          <span class="comment"># 上一步查到的真实大小</span></span><br><span class="line">CHUNK  = <span class="number">1</span> &lt;&lt; <span class="number">22</span>              <span class="comment"># 4MB</span></span><br><span class="line"></span><br><span class="line">attempt = <span class="number">0</span></span><br><span class="line"><span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">    sz = os.path.getsize(PATH)</span><br><span class="line">    <span class="keyword">if</span> sz &gt;= TARGET:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&quot;COMPLETE <span class="subst">&#123;sz&#125;</span>&quot;</span>, flush=<span class="literal">True</span>); <span class="keyword">break</span></span><br><span class="line">    attempt += <span class="number">1</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;attempt <span class="subst">&#123;attempt&#125;</span>: resume at <span class="subst">&#123;sz&#125;</span> (<span class="subst">&#123;<span class="number">100</span>*sz/TARGET:<span class="number">.1</span>f&#125;</span>%)&quot;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        req = urllib.request.Request(URL, headers=&#123;<span class="string">&quot;Range&quot;</span>: <span class="string">f&quot;bytes=<span class="subst">&#123;sz&#125;</span>-&quot;</span>&#125;)</span><br><span class="line">        r = urllib.request.urlopen(req, timeout=<span class="number">60</span>)</span><br><span class="line">        code = r.getcode()</span><br><span class="line">        <span class="comment"># 服务器忽略 Range 返回 200 时，绝不写入，否则前面全白下</span></span><br><span class="line">        <span class="keyword">if</span> code == <span class="number">200</span> <span class="keyword">and</span> sz &gt; <span class="number">0</span>:</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">&quot;  server ignored Range (200); abort to avoid overwrite&quot;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">            sys.exit(<span class="number">2</span>)</span><br><span class="line">        <span class="keyword">with</span> <span class="built_in">open</span>(PATH, <span class="string">&quot;ab&quot;</span>) <span class="keyword">as</span> f:</span><br><span class="line">            t0, got = time.time(), <span class="number">0</span></span><br><span class="line">            <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">                chunk = r.read(CHUNK)</span><br><span class="line">                <span class="keyword">if</span> <span class="keyword">not</span> chunk: <span class="keyword">break</span></span><br><span class="line">                f.write(chunk); got += <span class="built_in">len</span>(chunk)</span><br><span class="line">                <span class="keyword">if</span> got % (<span class="number">1</span> &lt;&lt; <span class="number">26</span>) &lt; CHUNK:   <span class="comment"># 每 ~64MB 报一次</span></span><br><span class="line">                    speed = got / <span class="built_in">max</span>(time.time() - t0, <span class="number">0.1</span>) / <span class="number">1e6</span></span><br><span class="line">                    <span class="built_in">print</span>(<span class="string">f&quot;  <span class="subst">&#123;os.path.getsize(PATH)&#125;</span> (<span class="subst">&#123;<span class="number">100</span>*os.path.getsize(PATH)/TARGET:<span class="number">.1</span>f&#125;</span>%) <span class="subst">&#123;speed:<span class="number">.1</span>f&#125;</span> MB/s&quot;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">    <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&quot;  error: <span class="subst">&#123;e&#125;</span>&quot;</span>, flush=<span class="literal">True</span>); time.sleep(<span class="number">3</span>)</span><br><span class="line">    time.sleep(<span class="number">1</span>)</span><br></pre></td></tr></table></figure>
+
+<p>两个关键点：</p>
+<ul>
+<li><strong>Range 请求 + 追加写（<code>ab</code>）</strong>：断线后用已下载字节数做偏移，从头循环。</li>
+<li><strong>拒绝 200 响应</strong>：服务器若忽略 Range 从头返回，追加写会把文件撑成两倍大的垃圾。<strong>直接退出让人处理，比静默损坏强</strong>。</li>
+</ul>
+<p>下完记得校验大小和文件头：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(PATH, <span class="string">&quot;rb&quot;</span>) <span class="keyword">as</span> f:</span><br><span class="line">    <span class="built_in">print</span>(f.read(<span class="number">4</span>))          <span class="comment"># b&#x27;GGUF&#x27;</span></span><br><span class="line"><span class="built_in">print</span>(os.path.getsize(PATH))  <span class="comment"># 18973870432</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>💡 <strong>附带一个 Windows 小坑</strong>：用 Windows 版 Python 跑脚本时，路径必须写成 <code>D:/xxx/yyy.py</code> 风格。Git Bash 的 <code>/d/xxx/yyy.py</code> 会被解析成 <code>C:\d\xxx\yyy.py</code>，然后报找不到文件。</p>
+</blockquote>
+<hr>
+<h2 id="🐛-第一个真坑：1-字-秒，显存超售的锅"><a href="#🐛-第一个真坑：1-字-秒，显存超售的锅" class="headerlink" title="🐛 第一个真坑：1 字&#x2F;秒，显存超售的锅"></a>🐛 第一个真坑：1 字&#x2F;秒，显存超售的锅</h2><p>模型加载正常、能出字，但速度只有 <strong>1.00 字&#x2F;秒</strong>。日志里有一行关键警告：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">W common_fit_params: failed to fit params to free device memory:</span><br><span class="line">  n_gpu_layers already set by user to 20, abort</span><br></pre></td></tr></table></figure>
+
+<p><strong>根因</strong>：我手动写死了 <code>--n-gpu-layers 20</code>，而此时显存被另一个常驻程序占着（只剩 3.2GB 可用），20 层的权重塞不下。</p>
+<p>Windows 的 WDDM 驱动模型这时候<strong>不会报 OOM</strong>，而是静默把 GPU 显存溢出到”共享 GPU 内存”——也就是走 PCIe 去系统内存搬。<strong>这比直接把层放 CPU 上还慢得多</strong>，于是掉到 1.0 字&#x2F;秒。</p>
+<blockquote>
+<p>⚠️ <strong>这个坑的阴险之处</strong>：它不报错、不崩溃，只是慢。你只会以为是”27B 本来就慢”，然后开始怀疑人生。</p>
+</blockquote>
+<p><strong>修法：别手写 <code>-ngl</code>，让 llama.cpp 自动拟合。</strong> 它启动时按当前真实空闲显存算能放几层，无论别的程序占没占显存都不会超售。</p>
+<hr>
+<h2 id="📊-实测：1-5-字-秒是物理极限，不是没调好"><a href="#📊-实测：1-5-字-秒是物理极限，不是没调好" class="headerlink" title="📊 实测：1.5 字&#x2F;秒是物理极限，不是没调好"></a>📊 实测：1.5 字&#x2F;秒是物理极限，不是没调好</h2><p>做了五组对照（每次都用全新 prompt，排除缓存干扰）：</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>生成速度</th>
+<th>读入速度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>手动 <code>-ngl 20/22</code>（显存被占用时）</td>
+<td>1.00 字&#x2F;秒</td>
+<td>3~6 字&#x2F;秒</td>
+</tr>
+<tr>
+<td><strong>自动分层（不写 <code>-ngl</code>）</strong></td>
+<td><strong>1.59 字&#x2F;秒</strong></td>
+<td>5.6 字&#x2F;秒</td>
+</tr>
+<tr>
+<td>纯 CPU（<code>-ngl 0</code>）</td>
+<td>1.49 字&#x2F;秒</td>
+<td>4.9 字&#x2F;秒</td>
+</tr>
+<tr>
+<td>纯 CPU + 12 线程（<code>-t 12</code>）</td>
+<td>1.49 字&#x2F;秒</td>
+<td>6.2 字&#x2F;秒</td>
+</tr>
+<tr>
+<td>重启后干净环境（显存全空）</td>
+<td>1.58 字&#x2F;秒</td>
+<td>5.8 字&#x2F;秒</td>
+</tr>
+</tbody></table>
+<p>三个反直觉的结论：</p>
+<p><strong>① GPU 分层只带来 7% 提升。</strong> 按 Amdahl 定律，8GB 显存能放约 40% 的层，理论上限应该接近 1.6 倍，实际只有 1.07 倍。差额来自 Vulkan 在 RDNA2 上的 kernel 效率、跨设备提交开销，以及自动拟合本身很保守。</p>
+<p><strong>② 线程数对生成速度零影响。</strong> 12 线程只让读入快了 27%，生成纹丝不动——<strong>生成是带宽瓶颈，不是算力瓶颈</strong>。</p>
+<p><strong>③ 关掉其他程序腾出全部显存也没用。</strong> 1.58 &#x3D; 1.59，说明瓶颈根本不在显存。</p>
+<h3 id="算一笔账，验证是不是带宽"><a href="#算一笔账，验证是不是带宽" class="headerlink" title="算一笔账，验证是不是带宽"></a>算一笔账，验证是不是带宽</h3><p>生成一个 token 要把 17.7GB 权重完整读一遍。本机内存有效带宽约 25~30 GB&#x2F;s：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">17.7 GB ÷ 26 GB/s ≈ 0.68 秒/字  →  约 1.5 字/秒</span><br></pre></td></tr></table></figure>
+
+<p>和实测的 1.49~1.59 <strong>完全吻合</strong>。所以这个数字不是”没调好”，是内存带宽写死的。</p>
+<blockquote>
+<p>💡 <strong>顺带一提</strong>：上下文设太大（比如 256K）对生成速度没影响（混合注意力的 KV 很小），但<strong>读入会慢到不可用</strong>——长文档先想清楚再喂。</p>
+</blockquote>
+<hr>
+<h2 id="💡-想更快怎么办"><a href="#💡-想更快怎么办" class="headerlink" title="💡 想更快怎么办"></a>💡 想更快怎么办</h2><p>27B 在 8GB 卡上没有提速空间，唯一出路是<strong>换更小、能整进显存的模型</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>体积</th>
+<th>预计速度</th>
+<th>代价</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Qwen3-8B Q4_K_M</td>
+<td>~5GB（可全进显存）</td>
+<td>15~25 字&#x2F;秒</td>
+<td>智力明显下降</td>
+</tr>
+<tr>
+<td>Qwen3-14B Q4_K_M</td>
+<td>~9GB（约七成进显存）</td>
+<td>4~6 字&#x2F;秒</td>
+<td>智力略降</td>
+</tr>
+<tr>
+<td>继续优化 27B 参数</td>
+<td>—</td>
+<td>上限 1.6 字&#x2F;秒</td>
+<td>无用功</td>
+</tr>
+</tbody></table>
+<p>一句话：<strong>交互聊天用小模型，长文&#x2F;批量用 27B</strong>。27B 的正确用法是”挂后台丢任务，去干别的”，不是一问一答。</p>
+<hr>
+<h2 id="🛠️-实用小贴士"><a href="#🛠️-实用小贴士" class="headerlink" title="🛠️ 实用小贴士"></a>🛠️ 实用小贴士</h2><ul>
+<li><strong>思考档位</strong>：Qwen3.8 默认 <code>reasoning_effort=xhigh</code>，会思考十几分钟。日常用 <code>medium</code>，急用 <code>low</code>，或者直接调 API 传参覆盖。</li>
+<li><strong>省时间</strong>：连续提问保持同一会话，prompt 缓存命中后读入快 3~5 倍（实测 45 token 命中缓存只需 1.1 秒，冷启动要 8 秒）。</li>
+<li><strong>冷启动</strong>：首次从磁盘读 17.7GB 约 1<del>2 分钟，第二次有系统缓存约 10</del>30 秒。</li>
+<li><strong>输出乱码</strong>：Vulkan 下混合注意力批处理有个已知 bug，加 <code>-ub 256</code> 或 <code>-ub 1024</code> 规避（避开默认 512）。</li>
+<li><strong>接入其他客户端</strong>：服务提供 OpenAI 兼容接口，Chatbox &#x2F; NextChat 之类填 <code>http://127.0.0.1:&lt;端口&gt;/v1</code>、模型名 <code>Qwen3.8-27B</code> 即可。</li>
+<li><strong>界面语言</strong>：llama.cpp 自带网页界面是英文且打包在 exe 里改不了。可以用 <code>--path &lt;目录&gt;</code> 指定自己的静态页面来替换。</li>
+</ul>
+<hr>
+<h2 id="✅-排错清单（照着查）"><a href="#✅-排错清单（照着查）" class="headerlink" title="✅ 排错清单（照着查）"></a>✅ 排错清单（照着查）</h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>原因</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>日志出现 <code>failed to fit params ... n_gpu_layers already set</code></td>
+<td>手写 <code>-ngl</code> 导致显存超售</td>
+<td>删掉 <code>-ngl</code>，让程序自动拟合</td>
+</tr>
+<tr>
+<td>速度 1 字&#x2F;秒</td>
+<td>同上（WDDM 共享内存溢出）</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>下载中断、curl 报 error 23</td>
+<td>Git Bash curl 写入问题</td>
+<td>换 Python urllib 续传脚本</td>
+</tr>
+<tr>
+<td>服务器忽略 Range 返回 200</td>
+<td>镜像站问题</td>
+<td>脚本里 <code>sys.exit(2)</code> 拒绝写入，别硬写</td>
+</tr>
+<tr>
+<td>Windows Python 报找不到脚本文件</td>
+<td>用了 <code>/d/xxx</code> 路径</td>
+<td>改成 <code>D:/xxx</code></td>
+</tr>
+<tr>
+<td>生成慢到不可用</td>
+<td>27B 在 8GB 卡的物理极限</td>
+<td>换小模型，别再调参</td>
+</tr>
+<tr>
+<td>回答前思考十几分钟</td>
+<td>默认 <code>xhigh</code> 档位</td>
+<td>设 <code>low</code> &#x2F; <code>medium</code></td>
+</tr>
+<tr>
+<td>输出乱码</td>
+<td>Vulkan 批处理 bug</td>
+<td><code>-ub 256</code> 或 <code>-ub 1024</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="📝-写在最后"><a href="#📝-写在最后" class="headerlink" title="📝 写在最后"></a>📝 写在最后</h2><p>整个过程最大的体会：<strong>本地跑大模型，瓶颈往往不在显存，而在内存带宽</strong>。显卡能帮你一点点（7%），但决定上限的是内存每秒能喂给 CPU 多少 GB。</p>
+<p>如果你也是 8GB 显卡想跑 27B，记住这三句话：</p>
+<ol>
+<li><strong>别手写 <code>-ngl</code></strong>：自动拟合既省事又不会踩 WDDM 静默溢出的坑</li>
+<li><strong>1.5 字&#x2F;秒不是没调好</strong>：算一笔带宽账就明白了，别再调参</li>
+<li><strong>该换小模型就换</strong>：交互用小模型，长文批量才用 27B</li>
+</ol>
+<p>祝你也跑通 🎉</p>
+
+      
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+</div>
+
+
+
 
     
 
@@ -186,7 +596,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-09-02 06:15:28" itemprop="dateModified" datetime="2026-09-02T06:15:28+08:00">2026-09-02</time>
+      <time title="修改时间：2026-09-03 04:17:43" itemprop="dateModified" datetime="2026-09-03T04:17:43+08:00">2026-09-03</time>
     </span>
 
   
@@ -203,8 +613,8 @@
 <p>8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？<br>答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。</p>
 </blockquote>
 <hr>
-<h2 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h2><p>MiniMax-H3 是支持文本生成视频（t2va）、首尾帧生成视频（ref2va）、图像生成视频（fl2va）三合一的音视频联合生成模型，权重高达 41GB。正常来说这是 24GB 显存显卡的玩具。</p>
-<p>但我手里只有一张 <strong>AMD RX 6650 XT（8GB 显存）</strong>，还吃不到 CUDA 生态——只能靠 ZLUDA 翻译层把 CUDA 调用翻译成 AMD 的 HIP。整个过程中我换了两次技术方案、打了 8 个补丁、排了 14 轮错，最终用 <strong>GGUF Q4_K 量化</strong>把模型压到 10.6GB，成功跑进采样循环。</p>
+<h2 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h2><p>MiniMax-H3 是支持文本生成视频（t2va）、参考图生成视频（ref2va）、首帧生成视频（fl2va）三合一的音视频联合生成模型，权重高达 41GB。正常来说这是 24GB 显存显卡的玩具。</p>
+<p>但我手里只有一张 <strong>AMD RX 6650 XT（8GB 显存）</strong>，还吃不到 CUDA 生态——只能靠 ZLUDA 翻译层把 CUDA 调用翻译成 AMD 的 HIP。整个过程中我换了两次技术方案、打了 9 个补丁、排了 14 轮错，最终用 <strong>GGUF Q4_K 量化</strong>把模型压到 10.6GB，成功跑进采样循环。</p>
 <p>这篇文章是完整的操作记录和排错路线图，希望能帮你少走弯路。</p>
 <hr>
 <h2 id="🎯-最终方案"><a href="#🎯-最终方案" class="headerlink" title="🎯 最终方案"></a>🎯 最终方案</h2><table>
@@ -268,26 +678,45 @@
 <thead>
 <tr>
 <th>文件</th>
+<th>位置</th>
 <th>大小</th>
 <th>说明</th>
 </tr>
 </thead>
 <tbody><tr>
 <td><code>minimax_h3_fl2va_pruned-Q4_K.gguf</code></td>
+<td><code>models/diffusion_models/</code></td>
 <td>10.63GB</td>
 <td>主模型（unsloth 出品，HuggingFace 下载）</td>
 </tr>
 <tr>
 <td><code>qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors</code></td>
+<td><code>models/text_encoders/</code>（<strong>强制 CPU 加载</strong>，nvfp4 张量无法 <code>.to(cuda)</code>）</td>
 <td>15.7GB</td>
-<td>文本编码器（nvfp4 量化，只能 CPU 跑）</td>
+<td>文本编码器</td>
 </tr>
 <tr>
 <td><code>minimax_h3_video_vae_fp16.safetensors</code></td>
+<td><code>models/vae/</code></td>
 <td>5.2GB</td>
-<td>视频 VAE</td>
+<td>视频 VAE（解画面）</td>
+</tr>
+<tr>
+<td><code>minimax_h3_audio_vae_fp32.safetensors</code></td>
+<td><code>models/vae/</code></td>
+<td>577MB</td>
+<td><strong>音频 VAE（解声音，别漏）</strong></td>
+</tr>
+<tr>
+<td><code>minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors</code></td>
+<td><code>models/loras/</code></td>
+<td>1.87GB</td>
+<td>4 步 turbo LoRA</td>
 </tr>
 </tbody></table>
+<p><strong>启动参数</strong>：<code>--auto-launch --dont-upcast-attention --preview-method auto --use-quad-cross-attention</code></p>
+<p><strong>工作流</strong>：<code>minimax-h3-t2va-gguf-av-turbo4.json</code>（带音频 + 4 步加速，cfg 已默认 1.0）；图生视频另有 <code>minimax-h3-i2v-turbo4.json</code>（首帧驱动）与 <code>minimax-h3-ref2va-turbo4.json</code>（参考图模式）</p>
+<p><strong>最小验证参数</strong>：<code>416×256×22 帧 × 4 步 × cfg 1</code>，跑通后再放大。</p>
 <p><strong>下载技巧</strong>：HuggingFace 直连在国内基本不可用，换 <strong>hf-mirror.com 镜像</strong>（实测速度 35MB&#x2F;s）。下载完务必确认文件大小与仓库标注一致，不要留 <code>.part</code> 残留。</p>
 <hr>
 <h2 id="🔧-前置补丁：让-ComfyUI-在-ZLUDA-上活下来"><a href="#🔧-前置补丁：让-ComfyUI-在-ZLUDA-上活下来" class="headerlink" title="🔧 前置补丁：让 ComfyUI 在 ZLUDA 上活下来"></a>🔧 前置补丁：让 ComfyUI 在 ZLUDA 上活下来</h2><p>ZLUDA 环境下有 5 个补丁是<strong>缺一不可</strong>的，不补的话报错会随机出现在任何地方（因为 CUDA 上下文从启动起就坏了）。</p>
@@ -381,11 +810,11 @@
 </tr>
 <tr>
 <td><code>MiniMaxH3SigmaShift</code></td>
-<td><strong>必需节点</strong>（AV 采样器），shift_video&#x3D;12, shift_audio&#x3D;3</td>
+<td><strong>必需节点</strong>（AV 采样器），基础版 shift_video&#x3D;12 &#x2F; shift_audio&#x3D;3；配 768p turbo LoRA 改为 <strong>6 &#x2F; 3</strong></td>
 </tr>
 <tr>
 <td><code>KSampler</code></td>
-<td>最小验证参数：416×256×22帧 × 10步 × cfg5</td>
+<td>最小验证参数：416×256×22帧 × <strong>4 步 × cfg 1</strong>（配 turbo LoRA）；不配 LoRA 时 10 步 × cfg 5</td>
 </tr>
 </tbody></table>
 <hr>
@@ -541,36 +970,94 @@
 <td>3</td>
 </tr>
 <tr>
+<td><code>cfg</code></td>
+<td>5.0</td>
+<td><strong>1.0（实测后定为本工作流默认值）</strong></td>
+</tr>
+<tr>
 <td>sampler &#x2F; scheduler</td>
 <td>euler &#x2F; simple</td>
 <td>euler &#x2F; simple</td>
 </tr>
 </tbody></table>
 <p>注意 LoRA 必须插在 <strong>SigmaShift 之前</strong>。</p>
+<blockquote>
+<p>⚠️ <strong>cfg 这一行是实测改过的</strong>：蒸馏版 LoRA 学的是”无负向引导”的采样轨迹，cfg&#x3D;5 会把采样拽离蒸馏流形——实测表现是<strong>画面糊 + 帧间闪烁</strong>，而速度只比 cfg&#x3D;1 慢约 15%（见下方实测数据）。所以 cfg&#x3D;1.0 不是为了省时间，是<strong>画质必需</strong>。</p>
+</blockquote>
 <h3 id="另外两个小知识"><a href="#另外两个小知识" class="headerlink" title="另外两个小知识"></a>另外两个小知识</h3><p><strong>GGUF 量化模型叠 LoRA 会不会爆显存？</strong> 不会。ComfyUI-GGUF 对量化权重走的是<strong>延迟 patch</strong>：保持量化状态，把 patch 挂上去，等到真正 forward 时才逐层反量化合并——不会一次性把 10GB 模型展开成 bf16。对 8GB 显卡相当友好。</p>
 <p><strong>帧数不是随便填的。</strong> 官方工作流用 <code>max(5, round(a*24)) + (5 - (max(5, round(a*24)) % 17)) % 17</code> 来对齐帧数，等价于要求 <code>length % 17 == 5</code>（H3 的时间维压缩对齐）。124 帧正好合规（124 &#x3D; 7×17 + 5）。</p>
 <h3 id="已知取舍"><a href="#已知取舍" class="headerlink" title="已知取舍"></a>已知取舍</h3><ul>
 <li>turbo 模式下<strong>音频与运动质量略低于</strong>全步数版本（ComfyUI 官方文档口径）。</li>
-<li>LoRA 训练分辨率是 768p（1344×768），若实际跑 480p 则低于原生画布，画质增益会打折。</li>
-<li>显存吃紧时，把 <code>cfg</code> 降到 1.0 可以再省掉一半前向计算（负向不再参与）。</li>
+<li>LoRA 训练分辨率是 768p（1344×768），当前跑 864×480 低于原生画布，增益打折；显存允许可试 1344×768。</li>
+<li><del>显存吃紧时把 cfg 降到 1.0 可以省掉一半前向计算</del> → <strong>实测更正</strong>：cfg&#x3D;1 相对 cfg&#x3D;5 只快约 <strong>15%</strong>，远不到一半。原因见下节——lowvram 模式下瓶颈是 PCIe 搬运，不是算力。降 cfg 的正确理由是<strong>画质</strong>（消除糊和闪），不是省时间。</li>
 </ul>
 <hr>
-<h2 id="🔮-下一步"><a href="#🔮-下一步" class="headerlink" title="🔮 下一步"></a>🔮 下一步</h2><ul>
-<li><input checked="" disabled="" type="checkbox"> 480P 5 秒视频跑通</li>
-<li><input checked="" disabled="" type="checkbox"> 音频链路修复（音频 VAE + 通用音频解码节点，见上节）</li>
-<li><input checked="" disabled="" type="checkbox"> 4 步 turbo LoRA 就位（含键名前缀补丁，见上节）</li>
-<li><input disabled="" type="checkbox"> 验证音画同步与音质</li>
-<li><input disabled="" type="checkbox"> 验证 4 步加速的实际提速倍数与画质变化</li>
-<li><input disabled="" type="checkbox"> 测 t2va（纯文本）与 ref2va（首尾帧）变体</li>
-<li><input disabled="" type="checkbox"> 摸底 8GB 显存能扛的最大分辨率&#x2F;帧数</li>
+<h2 id="📊-实测数据：8GB-显存的真实成绩单"><a href="#📊-实测数据：8GB-显存的真实成绩单" class="headerlink" title="📊 实测数据：8GB 显存的真实成绩单"></a>📊 实测数据：8GB 显存的真实成绩单</h2><p>以上都是”能跑”，这一节回答”多慢”。同一台机（RX 6650 XT 8GB + 32GB 内存）：</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>全程耗时</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>416×256×22 帧 × 4 步 × cfg1</td>
+<td><strong>采样仅约 50 秒</strong></td>
+<td>冷启动总耗时 15~16 分钟，大头是模型加载 + CPU 文本编码</td>
+</tr>
+<tr>
+<td>864×480×124 帧 × 4 步 × cfg5</td>
+<td>1:05:01</td>
+<td>冷启动（约 6min 模型加载 + 约 10min CPU 文本编码）</td>
+</tr>
+<tr>
+<td>864×480×124 帧 × 4 步 × <strong>cfg1</strong></td>
+<td><strong>45:49</strong></td>
+<td>热机 + 提示词缓存命中，几乎纯采样&#x2F;解码</td>
+</tr>
+</tbody></table>
+<p>三个反直觉的结论：</p>
+<ol>
+<li><strong>cfg&#x3D;1.0 只快约 15%，不是理论上的 2 倍。</strong> lowvram 模式下每次前向都要从内存搬约 5.3GB 权重过 PCIe，瓶颈在<strong>搬运</strong>不在算力——砍掉负向分支省不了多少墙钟时间。<strong>想提速：降分辨率&#x2F;帧数 &gt; 固定提示词吃 CLIP 缓存 &gt; 降 cfg（最后才轮到它）。</strong></li>
+<li><strong>文本编码器走 CPU 是每段视频约 10 分钟的固定税。</strong> Qwen3-VL 32B 的 nvfp4 权重进不了显存，只能 CPU 编码。但提示词不变时命中 CLIP 缓存，10 分钟 → 约 2 分钟。所以<strong>批量出片固定提示词、只改 seed</strong> 最划算。</li>
+<li><strong>22 帧 ≈ 0.92 秒。</strong> 帧数换算别想当然：124 帧 @24fps 才约 5 秒，22 帧的”最小验证参数”其实不到 1 秒。</li>
+</ol>
+<blockquote>
+<p>💡 顺带一个排查经验：ComfyUI 的<strong>节点缓存</strong>会让同样参数的二次运行 0.28 秒就”跑完”。做计时测试务必改 seed，否则测的是缓存不是显卡。</p>
+</blockquote>
+<hr>
+<h2 id="🎬-图生视频：让固定人物出演任意场景"><a href="#🎬-图生视频：让固定人物出演任意场景" class="headerlink" title="🎬 图生视频：让固定人物出演任意场景"></a>🎬 图生视频：让固定人物出演任意场景</h2><p>H3 原生支持两条图生视频路线，都已跑通（turbo LoRA 通用，输出同样带声音）：</p>
+<p><strong>路线 A：首帧驱动（让这张图动起来）</strong><br><code>MiniMaxH3ImageToVideo</code> 有可选的 <code>first_frame</code> 输入。图片会被拉伸为视频第 0 帧作锚点，人物主体天然不变，模型续演出动作和声音。改动最小，适合”让这张图动起来”。</p>
+<p><strong>路线 B：参考图模式（主体一致、场景随便换）</strong><br><code>MiniMaxH3ReferenceToVideo</code> 节点，参考图最多 9 张（多角度图身份更稳），prompt 里用 <code>&lt;Picture 1&gt;</code> 标签指代，每换一段 prompt 就是一个新场景视频。注意：</p>
+<ul>
+<li>必须把 <strong>音频 VAE</strong> 接到节点的 <code>audio_vae</code> 输入，否则同样没声音</li>
+<li><code>ref_image_size=match</code> 快（参考图缩放到生成画布面积）；<code>max</code> 身份保真更好，但参考 token 每步参与采样，<strong>能慢数倍</strong></li>
+<li>⚠️ <strong>身份保持的下限取决于参考图质量</strong>：参考图过于简陋&#x2F;抽象时，模型会直接回退到训练数据里的”通用动漫人物”先验，参考图形同虚设——想锁定自己的角色，必须给清晰、特征明确的人物图</li>
 </ul>
+<hr>
+<h2 id="✅-排错-checklist（收藏版）"><a href="#✅-排错-checklist（收藏版）" class="headerlink" title="✅ 排错 checklist（收藏版）"></a>✅ 排错 checklist（收藏版）</h2><p>按这个顺序查，能覆盖 90% 的翻车场景：</p>
+<ol>
+<li>报错位置随机 → 先怀疑 ZLUDA context 损坏，确认前置补丁全部生效</li>
+<li>OOM 且权重文件 &gt;10GB → 换更小量化（int8 不行就 Q4_K）</li>
+<li>GGUF 加载报 <code>dtype uint8</code> → BF16 反序列化缺失，补分支</li>
+<li>出画面没声音 → 查音频 VAE 是否下载 + latent 是否接了 <code>VAEDecodeAudio</code></li>
+<li>LoRA 无效 → 日志搜 <code>lora key not loaded</code>，查架构键名前缀映射</li>
+<li>抄参数先核对「<strong>版本 + 分辨率</strong>」两列，只看”几步”必错</li>
+<li>崩溃重启前先杀 python 残留进程（可占 20GB+ 内存）</li>
+<li>turbo 模型画质崩（糊 + 闪）→ 先查 cfg 是不是没设 <strong>1.0</strong></li>
+<li>出片太慢 → 顺序：降分辨率&#x2F;帧数 &gt; 固定提示词吃 CLIP 缓存 &gt; 降 cfg（最后才轮到它）</li>
+<li>参考图模式人物不像 → 参考图质量问题，换清晰、多角度的人物图，或试 <code>ref_image_size=max</code></li>
+</ol>
 <hr>
 <h2 id="📝-写在最后"><a href="#📝-写在最后" class="headerlink" title="📝 写在最后"></a>📝 写在最后</h2><p>整个过程最大的体会：<strong>AMD 跑 AI 不是不行，是坑多</strong>。ZLUDA 伪造算力、分配器不兼容、GGUF 反序列化漏分支……每一个都是”看起来像玄学、查下去全是逻辑”的问题。</p>
-<p>如果你也是 AMD 用户想跑大模型，记住三句话：</p>
+<p>如果你也是 AMD 用户想跑大模型，记住这几句话：</p>
 <ol>
 <li>显存不够就上 Q4 量化，int8 只是减半，不够</li>
 <li>报错随机 ≠ 问题随机，先查 CUDA 上下文是否健康</li>
 <li>GGUF 的 BF16 张量，十有八九是反序列化问题</li>
+<li><strong>不报错的失败最贵</strong>：没声音、LoRA 不生效、参考图不生效，都不会报错。判断有没有生效要靠日志和 ablation，而不是”跑完了就算成功”</li>
+<li><strong>提速先降分辨率，别先降 cfg</strong>：8GB 卡的瓶颈是 PCIe 搬运，cfg 5→1 只快 15%，砍一档分辨率能快一倍</li>
 </ol>
 <p>祝你也跑通 🎉</p>
 
@@ -1452,170 +1939,6 @@
 <p>各种互动还算不错，动作有些僵硬。</p>
 <p>剧情方面中等偏上水准。</p>
 <p>值得一提的是，在剧情的最后，当主角处在一个特殊状态下时，一开始无法正确地前往目的地，当我以为附近有什么谜题时，突然脑子里意识到了一个新的可能性，当我把这个可能性告诉我朋友，并真的成功时，当时带给我的尤里卡时刻，还是非常震撼的，并且这个设计也十分符合剧情和玩法，让游戏的机制玩法解释了剧情，让剧情和体验更上了一层楼。甚至我有点怀疑，作者是因为这个时刻，才做了这么一款游戏。</p>
-
-      
-    </div>
-
-    
-    
-    
-
-    <footer class="post-footer">
-        <div class="post-eof"></div>
-      
-    </footer>
-  </article>
-</div>
-
-
-
-
-    
-
-
-<div class="post-block">
-  
-  
-
-  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="">
-    <link itemprop="mainEntityOfPage" href="https://retr67.github.io/2026/07/02/teamspeak3%E4%BB%A5%E5%8F%8A%E9%9F%B3%E4%B9%90%E6%9C%BA%E5%99%A8%E4%BA%BA%E6%90%AD%E5%BB%BA/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="image" content="/images/avatar.gif">
-      <meta itemprop="name" content="Retr67">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="Retr67的小站">
-      <meta itemprop="description" content="">
-    </span>
-
-    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="undefined | Retr67的小站">
-      <meta itemprop="description" content="">
-    </span>
-      <header class="post-header">
-        <h2 class="post-title" itemprop="name headline">
-          <a href="/2026/07/02/teamspeak3%E4%BB%A5%E5%8F%8A%E9%9F%B3%E4%B9%90%E6%9C%BA%E5%99%A8%E4%BA%BA%E6%90%AD%E5%BB%BA/" class="post-title-link" itemprop="url">teamspeak3以及音乐机器人搭建</a>
-        </h2>
-
-        <div class="post-meta-container">
-          <div class="post-meta">
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar"></i>
-      </span>
-      <span class="post-meta-item-text">发表于</span>
-
-      <time title="创建时间：2026-07-02 23:34:10" itemprop="dateCreated datePublished" datetime="2026-07-02T23:34:10+08:00">2026-07-02</time>
-    </span>
-    <span class="post-meta-item">
-      <span class="post-meta-item-icon">
-        <i class="far fa-calendar-check"></i>
-      </span>
-      <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-07-15 23:40:18" itemprop="dateModified" datetime="2026-07-15T23:40:18+08:00">2026-07-15</time>
-    </span>
-
-  
-</div>
-
-        </div>
-      </header>
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-          <h1 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h1><p>在开始之前，请确保你具备以下条件：</p>
-<ul>
-<li><p><strong>一台 Linux 服务器</strong>：本文以 Ubuntu为例。</p>
-</li>
-<li><p><strong>一个公网 IP</strong>：确保你的服务器拥有独立的公网 IP，或已做好端口映射。</p>
-</li>
-<li><p><strong>开放防火墙端口</strong>：确保服务器防火墙和云服务商的安全组放行以下端口：</p>
-</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>端口</th>
-<th>协议</th>
-<th>用途</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><strong>9987</strong></td>
-<td><strong>UDP</strong></td>
-<td><strong>语音通信</strong> (最核心)</td>
-</tr>
-<tr>
-<td>30033</td>
-<td>TCP</td>
-<td>文件传输 (头像&#x2F;图标)</td>
-</tr>
-<tr>
-<td>10011</td>
-<td>TCP</td>
-<td>服务器远程管理 (ServerQuery)</td>
-</tr>
-<tr>
-<td>41144</td>
-<td>TCP</td>
-<td>新版客户端查询端口</td>
-</tr>
-</tbody></table>
-<blockquote>
-<p><strong>许可证说明</strong>：TeamSpeak 3 对非商业用途免费，内置 <strong>1个虚拟服务器</strong> 和 <strong>32个在线用户</strong> 的限制，对绝大多数私人团队来说完全够用。</p>
-</blockquote>
-<hr>
-<h1 id="开始安装"><a href="#开始安装" class="headerlink" title="开始安装"></a>开始安装</h1><h2 id="系统更新与创建用户"><a href="#系统更新与创建用户" class="headerlink" title="系统更新与创建用户"></a>系统更新与创建用户</h2><p>为了安全，我们强烈建议<strong>不要</strong>使用 <code>root</code> 账号运行 TS3 服务。</p>
-<h2 id="更新系统"><a href="#更新系统" class="headerlink" title="更新系统"></a>更新系统</h2><p>sudo apt update &amp;&amp; sudo apt upgrade -y</p>
-<h2 id="创建一个名为-teamspeak-的系统用户"><a href="#创建一个名为-teamspeak-的系统用户" class="headerlink" title="创建一个名为 teamspeak 的系统用户"></a>创建一个名为 teamspeak 的系统用户</h2><p>sudo adduser teamspeak</p>
-<h2 id="切换到该用户"><a href="#切换到该用户" class="headerlink" title="切换到该用户"></a>切换到该用户</h2><p>su - teamspeak</p>
-<h2 id="下载服务端软件"><a href="#下载服务端软件" class="headerlink" title="下载服务端软件"></a>下载服务端软件</h2><p>进入用户目录，并从官网下载最新版服务端（请以<a target="_blank" rel="noopener" href="https://teamspeak.com/en/downloads/#server">官网</a>最新版本号为准）：</p>
-<p>cd &#x2F;home&#x2F;teamspeak</p>
-<h2 id="下载服务端压缩包-以-3-13-7-版本为例"><a href="#下载服务端压缩包-以-3-13-7-版本为例" class="headerlink" title="下载服务端压缩包 (以 3.13.7 版本为例)"></a>下载服务端压缩包 (以 3.13.7 版本为例)</h2><p>wget <a target="_blank" rel="noopener" href="https://files.teamspeak-services.com/releases/server/3.13.7/teamspeak3-server_linux_amd64-3.13.7.tar.bz2">https://files.teamspeak-services.com/releases/server/3.13.7/teamspeak3-server_linux_amd64-3.13.7.tar.bz2</a></p>
-<h2 id="解压"><a href="#解压" class="headerlink" title="解压"></a>解压</h2><p>tar -xjvf teamspeak3-server_linux_amd64-*.tar.bz2</p>
-<h2 id="启动服务器"><a href="#启动服务器" class="headerlink" title="启动服务器"></a>启动服务器</h2><p>进入解压后的目录，接受许可协议并启动：</p>
-<p>cd teamspeak3-server_linux_amd64</p>
-<h2 id="创建同意许可协议的文件"><a href="#创建同意许可协议的文件" class="headerlink" title="创建同意许可协议的文件"></a>创建同意许可协议的文件</h2><p>touch .ts3server_license_accepted</p>
-<h2 id="启动服务器-1"><a href="#启动服务器-1" class="headerlink" title="启动服务器"></a>启动服务器</h2><p>.&#x2F;ts3server_startscript.sh start</p>
-<hr>
-<h1 id="🚨-关键步骤：保存管理员令牌"><a href="#🚨-关键步骤：保存管理员令牌" class="headerlink" title="🚨 关键步骤：保存管理员令牌"></a>🚨 关键步骤：保存管理员令牌</h1><p>首次启动时，终端日志中会显示两行极其重要的信息：</p>
-<p>ServerAdmin privilege key created, please use it to gain serveradmin rights for your virtualserver.<br>token&#x3D;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p>
-<p><strong>请立即复制并保存这个 <code>token</code>（令牌）</strong>。如果你关闭了终端，将无法找回，只能清空数据重新初始化。</p>
-<hr>
-<h1 id="设置开机自启-Systemd"><a href="#设置开机自启-Systemd" class="headerlink" title="设置开机自启 (Systemd)"></a>设置开机自启 (Systemd)</h1><p>为了确保服务器在重启后自动运行，我们可以将其注册为系统服务。</p>
-<h2 id="创建服务文件-需要-root-权限-："><a href="#创建服务文件-需要-root-权限-：" class="headerlink" title="创建服务文件 (需要 root 权限)："></a><strong>创建服务文件</strong> (需要 <code>root</code> 权限)：</h2><p>sudo nano &#x2F;etc&#x2F;systemd&#x2F;system&#x2F;teamspeak3.service</p>
-<h2 id="粘贴以下配置-注意将-path-to-替换为你的实际绝对路径-："><a href="#粘贴以下配置-注意将-path-to-替换为你的实际绝对路径-：" class="headerlink" title="粘贴以下配置 (注意将 /path/to 替换为你的实际绝对路径)："></a><strong>粘贴以下配置</strong> (注意将 <code>/path/to</code> 替换为你的实际绝对路径)：</h2><p>[Unit]<br>Description&#x3D;TeamSpeak 3 Server<br>After&#x3D;network.target<br>[Service]<br>User&#x3D;teamspeak<br>Group&#x3D;teamspeak<br>WorkingDirectory&#x3D;&#x2F;home&#x2F;teamspeak&#x2F;teamspeak3-server_linux_amd64<br>ExecStart&#x3D;&#x2F;home&#x2F;teamspeak&#x2F;teamspeak3-server_linux_amd64&#x2F;ts3server<br>ExecStop&#x3D;&#x2F;home&#x2F;teamspeak&#x2F;teamspeak3-server_linux_amd64&#x2F;ts3server_startscript.sh stop<br>ExecReload&#x3D;&#x2F;home&#x2F;teamspeak&#x2F;teamspeak3-server_linux_amd64&#x2F;ts3server_startscript.sh restart<br>Restart&#x3D;always<br>RestartSec&#x3D;15<br>[Install]<br>WantedBy&#x3D;multi-user.target</p>
-<h2 id="重载配置并启用："><a href="#重载配置并启用：" class="headerlink" title="重载配置并启用："></a><strong>重载配置并启用</strong>：</h2><p>sudo systemctl daemon-reload<br>sudo systemctl enable teamspeak3<br>sudo systemctl start teamspeak3</p>
-<hr>
-<h1 id="连接与使用"><a href="#连接与使用" class="headerlink" title="连接与使用"></a>连接与使用</h1><p><strong>下载客户端</strong>：从 <a target="_blank" rel="noopener" href="https://teamspeak.com/en/downloads/">TeamSpeak 官网</a> 下载适用于你系统的客户端。</p>
-<p><strong>连接服务器</strong>：打开客户端，点击 <code>Connections</code> -&gt; <code>Connect</code>，输入你的 <strong>服务器 IP 地址</strong>（端口默认 9987，可不填）。</p>
-<p><strong>获取管理员权限</strong>：首次进入频道时，客户端会弹出窗口要求输入 <strong>Token</strong>。粘贴你在第三步保存的令牌，即可获得管理员权限。</p>
-<hr>
-<h1 id="常见问题排查-Troubleshooting"><a href="#常见问题排查-Troubleshooting" class="headerlink" title="常见问题排查 (Troubleshooting)"></a>常见问题排查 (Troubleshooting)</h1><table>
-<thead>
-<tr>
-<th>问题现象</th>
-<th>可能原因与解决方案</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><strong>客户端连接不上</strong></td>
-<td>1. <strong>检查 UDP 9987 端口</strong>是否放行，这是最常见的坑。<br>2. 检查云服务商安全组策略。</td>
-</tr>
-<tr>
-<td><strong>听不到声音&#x2F;语音卡顿</strong></td>
-<td>检查服务器带宽是否跑满，或客户端 Codec 设置是否过高。</td>
-</tr>
-<tr>
-<td><strong>丢失了管理员 Token</strong></td>
-<td>停止服务端，删除 <code>/home/teamspeak/teamspeak3-server_linux_amd64</code> 下的 <code>query_ip_whitelist.txt</code> 和 <code>query_ip_blacklist.txt</code>，重启后控制台会生成新 Token。</td>
-</tr>
-</tbody></table>
-<h1 id="搭建-TeamSpeak-音乐机器人-teamspeak-music-bot"><a href="#搭建-TeamSpeak-音乐机器人-teamspeak-music-bot" class="headerlink" title="搭建 TeamSpeak 音乐机器人 (teamspeak-music-bot)"></a>搭建 TeamSpeak 音乐机器人 (teamspeak-music-bot)</h1><p>有了 TeamSpeak 服务器之后，不妨再给它配上一个“点歌台”。<code>teamspeak-music-bot</code> 是一个功能强大的开源音乐机器人，<a target="_blank" rel="noopener" href="https://github.com/ZHANGTIANYAO1/teamspeak-music-bot">链接</a>，支持从<strong>网易云音乐、QQ音乐、酷狗音乐、哔哩哔哩</strong>等多个平台搜索并播放音乐。它最大的亮点在于提供了一个 YesPlayMusic 风格的 WebUI 控制面板，让你可以通过浏览器轻松管理播放，体验非常接近专业的音乐播放器。</p>
 
       
     </div>

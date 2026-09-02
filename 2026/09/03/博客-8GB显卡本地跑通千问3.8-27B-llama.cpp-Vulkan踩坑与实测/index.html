@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 7.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/images/favicon-32x32-next.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/images/favicon-16x16-next.png">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" integrity="sha256-dABdfBfUoC8vJUBOwGVdm8L9qlMWaHTIfXt+7GnZCIo=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"retr67.github.io","root":"/","images":"/images","scheme":"Muse","darkmode":false,"version":"8.22.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测 8GB 显存的 AMD 显卡，能不能本地跑一个 27B 参数的大语言模型？答案是：能，但只有 1.5 字&#x2F;秒。这篇记录我踩过的每一个坑，以及一组证明”这个速度不是没调好”的对照实测。   📖 前言Qwen3.8-27B 是 2026 年 8 月发布的 27B 稠密模型，Apache 2.0、原生多模">
+<meta property="og:type" content="article">
+<meta property="og:title" content="8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测">
+<meta property="og:url" content="https://retr67.github.io/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/index.html">
+<meta property="og:site_name" content="Retr67的小站">
+<meta property="og:description" content="8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测 8GB 显存的 AMD 显卡，能不能本地跑一个 27B 参数的大语言模型？答案是：能，但只有 1.5 字&#x2F;秒。这篇记录我踩过的每一个坑，以及一组证明”这个速度不是没调好”的对照实测。   📖 前言Qwen3.8-27B 是 2026 年 8 月发布的 27B 稠密模型，Apache 2.0、原生多模">
+<meta property="og:locale" content="zh_CN">
+<meta property="article:published_time" content="2026-09-02T20:20:00.000Z">
+<meta property="article:modified_time" content="2026-09-02T20:20:38.836Z">
+<meta property="article:author" content="Retr67">
+<meta property="article:tag" content="AMD">
+<meta property="article:tag" content="排错">
+<meta property="article:tag" content="AI文章">
+<meta property="article:tag" content="GGUF">
+<meta property="article:tag" content="实测数据">
+<meta property="article:tag" content="千问">
+<meta property="article:tag" content="Qwen3.8">
+<meta property="article:tag" content="llama.cpp">
+<meta property="article:tag" content="Vulkan">
+<meta property="article:tag" content="量化">
+<meta name="twitter:card" content="summary">
+
+
+<link rel="canonical" href="https://retr67.github.io/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/">
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://retr67.github.io/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/","path":"2026/09/03/博客-8GB显卡本地跑通千问3.8-27B-llama.cpp-Vulkan踩坑与实测/","title":"8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测 | Retr67的小站</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="切换导航栏" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Retr67的小站</p>
+      <i class="logo-line"></i>
+    </a>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="搜索" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>首页</a></li><li class="menu-item menu-item-tags"><a href="/tags/" rel="section"><i class="fa fa-tags fa-fw"></i>标签</a></li><li class="menu-item menu-item-archives"><a href="/archives/" rel="section"><i class="fa fa-archive fa-fw"></i>归档</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          文章目录
+        </li>
+        <li class="sidebar-nav-overview">
+          站点概览
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#8GB-%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE-3-8-27B%EF%BC%9Allama-cpp-Vulkan-%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B"><span class="nav-number">1.</span> <span class="nav-text">8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%96-%E5%89%8D%E8%A8%80"><span class="nav-number">1.1.</span> <span class="nav-text">📖 前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%8E%AF-%E6%9C%80%E7%BB%88%E6%96%B9%E6%A1%88"><span class="nav-number">1.2.</span> <span class="nav-text">🎯 最终方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%A7%B1-%E6%96%B9%E6%A1%88%E9%80%89%E5%9E%8B%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E6%98%AF-Q4-K-M-Vulkan"><span class="nav-number">1.3.</span> <span class="nav-text">🧱 方案选型：为什么是 Q4_K_M + Vulkan</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%80%89-Qwen3-8-27B"><span class="nav-number">1.3.1.</span> <span class="nav-text">为什么选 Qwen3.8-27B</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%87%8F%E5%8C%96%E6%A1%A3%E4%BD%8D%EF%BC%9A8GB-%E5%8D%A1%E5%8F%AA%E6%9C%89-Q4-%E8%BF%99%E4%B8%80%E4%B8%AA%E6%B4%BB%E5%8F%A3"><span class="nav-number">1.3.2.</span> <span class="nav-text">量化档位：8GB 卡只有 Q4 这一个活口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A8%E7%90%86%E5%90%8E%E7%AB%AF%EF%BC%9AVulkan-%E6%98%AF-Windows-AMD-%E7%9A%84%E6%9C%80%E4%BC%98%E8%A7%A3"><span class="nav-number">1.3.3.</span> <span class="nav-text">推理后端：Vulkan 是 Windows + AMD 的最优解</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%A6-%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="nav-number">1.4.</span> <span class="nav-text">📦 文件清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%A5-%E4%B8%8B%E8%BD%BD%E5%85%B3%EF%BC%9A17-7GB-%E6%80%8E%E4%B9%88%E4%B8%8D%E6%96%AD%E7%BA%BF"><span class="nav-number">1.5.</span> <span class="nav-text">📥 下载关：17.7GB 怎么不断线</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A6%E8%B7%AF%E8%99%8E%E4%B8%80%EF%BC%9AGitHub-%E4%B8%8B%E4%B8%8D%E5%8A%A8-%E2%86%92-%E6%8D%A2%E9%95%9C%E5%83%8F"><span class="nav-number">1.5.1.</span> <span class="nav-text">拦路虎一：GitHub 下不动 → 换镜像</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A6%E8%B7%AF%E8%99%8E%E4%BA%8C%EF%BC%9Ahf-mirror-%E9%95%BF%E8%BF%9E%E6%8E%A5%E8%A2%AB%E6%8E%90%E6%96%AD"><span class="nav-number">1.5.2.</span> <span class="nav-text">拦路虎二：hf-mirror 长连接被掐断</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A6%E8%B7%AF%E8%99%8E%E4%B8%89%EF%BC%9AMSYS-%E7%9A%84-curl-%E5%86%99%E6%96%87%E4%BB%B6%E6%8A%A5%E9%94%99-23%EF%BC%88%E7%9C%9F%E5%9D%91%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">拦路虎三：MSYS 的 curl 写文件报错 23（真坑）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%90%9B-%E7%AC%AC%E4%B8%80%E4%B8%AA%E7%9C%9F%E5%9D%91%EF%BC%9A1-%E5%AD%97-%E7%A7%92%EF%BC%8C%E6%98%BE%E5%AD%98%E8%B6%85%E5%94%AE%E7%9A%84%E9%94%85"><span class="nav-number">1.6.</span> <span class="nav-text">🐛 第一个真坑：1 字&#x2F;秒，显存超售的锅</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%8A-%E5%AE%9E%E6%B5%8B%EF%BC%9A1-5-%E5%AD%97-%E7%A7%92%E6%98%AF%E7%89%A9%E7%90%86%E6%9E%81%E9%99%90%EF%BC%8C%E4%B8%8D%E6%98%AF%E6%B2%A1%E8%B0%83%E5%A5%BD"><span class="nav-number">1.7.</span> <span class="nav-text">📊 实测：1.5 字&#x2F;秒是物理极限，不是没调好</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AE%97%E4%B8%80%E7%AC%94%E8%B4%A6%EF%BC%8C%E9%AA%8C%E8%AF%81%E6%98%AF%E4%B8%8D%E6%98%AF%E5%B8%A6%E5%AE%BD"><span class="nav-number">1.7.1.</span> <span class="nav-text">算一笔账，验证是不是带宽</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%92%A1-%E6%83%B3%E6%9B%B4%E5%BF%AB%E6%80%8E%E4%B9%88%E5%8A%9E"><span class="nav-number">1.8.</span> <span class="nav-text">💡 想更快怎么办</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%9B%A0%EF%B8%8F-%E5%AE%9E%E7%94%A8%E5%B0%8F%E8%B4%B4%E5%A3%AB"><span class="nav-number">1.9.</span> <span class="nav-text">🛠️ 实用小贴士</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E2%9C%85-%E6%8E%92%E9%94%99%E6%B8%85%E5%8D%95%EF%BC%88%E7%85%A7%E7%9D%80%E6%9F%A5%EF%BC%89"><span class="nav-number">1.10.</span> <span class="nav-text">✅ 排错清单（照着查）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%9D-%E5%86%99%E5%9C%A8%E6%9C%80%E5%90%8E"><span class="nav-number">1.11.</span> <span class="nav-text">📝 写在最后</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+  <p class="site-author-name" itemprop="name">Retr67</p>
+  <div class="site-description" itemprop="description"></div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">58</span>
+          <span class="site-state-item-name">日志</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-tags">
+          <a href="/tags/">
+        <span class="site-state-item-count">122</span>
+        <span class="site-state-item-name">标签</span></a>
+      </div>
+  </nav>
+</div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="zh-CN">
+    <link itemprop="mainEntityOfPage" href="https://retr67.github.io/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/images/avatar.gif">
+      <meta itemprop="name" content="Retr67">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Retr67的小站">
+      <meta itemprop="description" content="">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测 | Retr67的小站">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">发表于</span>
+      
+
+      <time title="创建时间：2026-09-03 04:20:00 / 修改时间：04:20:38" itemprop="dateCreated datePublished" datetime="2026-09-03T04:20:00+08:00">2026-09-03</time>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><h1 id="8GB-显卡本地跑通千问-3-8-27B：llama-cpp-Vulkan-踩坑与实测"><a href="#8GB-显卡本地跑通千问-3-8-27B：llama-cpp-Vulkan-踩坑与实测" class="headerlink" title="8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测"></a>8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测</h1><blockquote>
+<p>8GB 显存的 AMD 显卡，能不能本地跑一个 27B 参数的大语言模型？<br>答案是：能，但只有 <strong>1.5 字&#x2F;秒</strong>。这篇记录我踩过的每一个坑，以及一组证明”这个速度不是没调好”的对照实测。</p>
+</blockquote>
+<hr>
+<h2 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h2><p>Qwen3.8-27B 是 2026 年 8 月发布的 27B 稠密模型，Apache 2.0、原生多模态、256K 上下文，官方还直接出了 GGUF。听起来很适合本地部署——直到你看到体积：<strong>Q4_K_M 量化后仍有 17.7GB</strong>。</p>
+<p>而我手里只有一张 <strong>AMD RX 6650 XT（8GB 显存）</strong>，在 Windows 上还吃不到 ROCm。这条路上我踩了三个坑（下载断线、Git Bash curl 写文件报错、速度莫名只有 1 字&#x2F;秒），最后靠 <strong>llama.cpp Vulkan 版 + 自动分层</strong>跑通，并做了一组五轮对照实测来回答那个最折磨人的问题：<strong>到底是我没调好，还是这台机器就只能这么快？</strong></p>
+<p>答案是后者。这篇文章把结论和证据都摆出来，省得你再花几小时重复我的调参。</p>
+<hr>
+<h2 id="🎯-最终方案"><a href="#🎯-最终方案" class="headerlink" title="🎯 最终方案"></a>🎯 最终方案</h2><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>方案</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>运行框架</td>
+<td>llama.cpp Vulkan 预编译版（b10760）</td>
+</tr>
+<tr>
+<td>模型形态</td>
+<td><strong>Qwen3.8-27B Q4_K_M GGUF</strong>（17.7GB）</td>
+</tr>
+<tr>
+<td>GPU 方案</td>
+<td><strong>Vulkan 后端</strong>（无需 ROCm）</td>
+</tr>
+<tr>
+<td>显存分配</td>
+<td><strong>自动分层</strong>（不写 <code>-ngl</code>，按空闲显存自动拟合）</td>
+</tr>
+<tr>
+<td>实测速度</td>
+<td><strong>生成 1.5~1.6 字&#x2F;秒</strong>，读入 5~6 字&#x2F;秒</td>
+</tr>
+</tbody></table>
+<p><strong>核心逻辑</strong>：模型远大于显存，绝大多数层只能走内存。既然如此，就不要手动指定塞几层进显卡——交给 llama.cpp 自动拟合，既不会超售，也不用反复试参数。</p>
+<hr>
+<h2 id="🧱-方案选型：为什么是-Q4-K-M-Vulkan"><a href="#🧱-方案选型：为什么是-Q4-K-M-Vulkan" class="headerlink" title="🧱 方案选型：为什么是 Q4_K_M + Vulkan"></a>🧱 方案选型：为什么是 Q4_K_M + Vulkan</h2><h3 id="为什么选-Qwen3-8-27B"><a href="#为什么选-Qwen3-8-27B" class="headerlink" title="为什么选 Qwen3.8-27B"></a>为什么选 Qwen3.8-27B</h3><table>
+<thead>
+<tr>
+<th>特性</th>
+<th>对本地部署的意义</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>混合注意力：48 层 Gated DeltaNet（线性）+ 16 层 Gated Attention</td>
+<td>KV 缓存省约 75%，16K 上下文几乎不占显存</td>
+</tr>
+<tr>
+<td>原生多模态</td>
+<td>不用外挂 CLIP 也能走图文</td>
+</tr>
+<tr>
+<td>256K 上下文</td>
+<td>理论上能吃长文档（但本机读入速度下不实用，见实测节）</td>
+</tr>
+<tr>
+<td>Apache 2.0</td>
+<td>商用无顾虑</td>
+</tr>
+<tr>
+<td>官方出 GGUF（ggml-org 仓库）</td>
+<td>不用自己转换权重，开箱即用</td>
+</tr>
+</tbody></table>
+<h3 id="量化档位：8GB-卡只有-Q4-这一个活口"><a href="#量化档位：8GB-卡只有-Q4-这一个活口" class="headerlink" title="量化档位：8GB 卡只有 Q4 这一个活口"></a>量化档位：8GB 卡只有 Q4 这一个活口</h3><table>
+<thead>
+<tr>
+<th>量化</th>
+<th>体积</th>
+<th>8GB 卡可行性</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>BF16 &#x2F; FP8</td>
+<td>55GB+</td>
+<td>❌ 想都别想</td>
+</tr>
+<tr>
+<td>Q8_0</td>
+<td>~30GB</td>
+<td>❌</td>
+</tr>
+<tr>
+<td><strong>Q4_K_M</strong></td>
+<td><strong>17.7GB</strong></td>
+<td>✅ 能跑（大部分在内存）</td>
+</tr>
+<tr>
+<td>IQ4_XS &#x2F; Q3_K_XL</td>
+<td>13~14GB</td>
+<td>⚠️ 能跑，但提速有限（见”想更快怎么办”）</td>
+</tr>
+</tbody></table>
+<blockquote>
+<p>💡 <strong>同系列没有”轻量款”</strong>：<code>Qwen3.8-Flash-Next</code> 听着像小的，实际是 180GB 的巨型 MoE（Q4_K_XL 分片加起来 111GB），比 27B 还难跑。别被名字骗了。</p>
+</blockquote>
+<h3 id="推理后端：Vulkan-是-Windows-AMD-的最优解"><a href="#推理后端：Vulkan-是-Windows-AMD-的最优解" class="headerlink" title="推理后端：Vulkan 是 Windows + AMD 的最优解"></a>推理后端：Vulkan 是 Windows + AMD 的最优解</h3><table>
+<thead>
+<tr>
+<th>路线</th>
+<th>现状</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>ROCm &#x2F; HIP 编译版</td>
+<td>Windows 上官方支持长期缺位，编译折磨</td>
+</tr>
+<tr>
+<td><strong>Vulkan 预编译版</strong></td>
+<td><strong>下载解压即用</strong> ✅</td>
+</tr>
+<tr>
+<td>纯 CPU</td>
+<td>最稳，但没有硬件加速</td>
+</tr>
+</tbody></table>
+<p>验证命令：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">llama-server.exe --list-devices</span><br><span class="line"><span class="comment"># Vulkan0: AMD Radeon RX 6650 XT (8176 MiB)</span></span><br></pre></td></tr></table></figure>
+
+<p>看到显卡型号的那一刻基本就成了。</p>
+<hr>
+<h2 id="📦-文件清单"><a href="#📦-文件清单" class="headerlink" title="📦 文件清单"></a>📦 文件清单</h2><table>
+<thead>
+<tr>
+<th>文件</th>
+<th>位置</th>
+<th>大小</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>Qwen3.8-27B-Q4_K_M.gguf</code></td>
+<td><code>models/</code></td>
+<td>17.7GB</td>
+<td>主模型（ggml-org 仓库，hf-mirror 下载）</td>
+</tr>
+<tr>
+<td><code>llama-server.exe</code> 等</td>
+<td><code>llama.cpp/</code></td>
+<td>约 200MB</td>
+<td>Vulkan 预编译包</td>
+</tr>
+<tr>
+<td><code>python_resume_download.py</code></td>
+<td><code>models/</code></td>
+<td>—</td>
+<td>断点续传下载器（本文最可复用的一段）</td>
+</tr>
+</tbody></table>
+<p><strong>启动参数</strong>（写成 bat 一键启动）：</p>
+<figure class="highlight bat"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">llama-server.exe ^</span><br><span class="line">  -m &quot;models\Qwen3.<span class="number">8</span>-<span class="number">27</span>B-Q4_K_M.gguf&quot; ^</span><br><span class="line">  -a &quot;Qwen3.<span class="number">8</span>-<span class="number">27</span>B&quot; ^</span><br><span class="line">  --ctx-size <span class="number">16384</span> ^</span><br><span class="line">  --flash-attn on ^</span><br><span class="line">  --jinja ^</span><br><span class="line">  --chat-template-kwargs &quot;&#123;\&quot;reasoning_effort\&quot;: \&quot;medium\&quot;&#125;&quot; ^</span><br><span class="line">  --host <span class="number">127</span>.<span class="number">0</span>.<span class="number">0</span>.<span class="number">1</span></span><br></pre></td></tr></table></figure>
+
+<ul>
+<li><code>-a</code> 是模型别名。不加的话 API 和客户端里显示的是一长串文件路径，加上就是干净的 <code>Qwen3.8-27B</code>。</li>
+<li><strong>故意不写 <code>-ngl</code></strong>，让 llama.cpp 自动按空闲显存分层——这是本文最重要的一个配置决定，原因见后面 1 字&#x2F;秒那节。</li>
+</ul>
+<hr>
+<h2 id="📥-下载关：17-7GB-怎么不断线"><a href="#📥-下载关：17-7GB-怎么不断线" class="headerlink" title="📥 下载关：17.7GB 怎么不断线"></a>📥 下载关：17.7GB 怎么不断线</h2><p>这一关花的时间比装模型还多，三个拦路虎：</p>
+<h3 id="拦路虎一：GitHub-下不动-→-换镜像"><a href="#拦路虎一：GitHub-下不动-→-换镜像" class="headerlink" title="拦路虎一：GitHub 下不动 → 换镜像"></a>拦路虎一：GitHub 下不动 → 换镜像</h3><p>Release 包直连失败（<code>schannel</code> 报错）。改用 GitHub 加速镜像即可：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">curl -L -C - -o llama.zip <span class="string">&quot;https://ghfast.top/https://github.com/ggml-org/llama.cpp/releases/download/b10760/llama-b10760-bin-win-vulkan-x64.zip&quot;</span></span><br><span class="line"><span class="comment"># 备选：https://gh-proxy.com/https://github.com/...</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="拦路虎二：hf-mirror-长连接被掐断"><a href="#拦路虎二：hf-mirror-长连接被掐断" class="headerlink" title="拦路虎二：hf-mirror 长连接被掐断"></a>拦路虎二：hf-mirror 长连接被掐断</h3><p>模型源站连不上，走镜像站。但<strong>大文件下载到几百 MB 就会被掐断</strong>（连接被对端关闭），必须断点续传 + 失败重试。</p>
+<p>先拿到真实文件大小，免得传完了不知道：</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl -s <span class="string">&quot;https://hf-mirror.com/api/models/ggml-org/Qwen3.8-27B-GGUF/tree/main&quot;</span> | \</span><br><span class="line">  python -c <span class="string">&quot;import json,sys;[print(f[&#x27;path&#x27;], f[&#x27;size&#x27;]) for f in json.load(sys.stdin) if f[&#x27;path&#x27;].endswith(&#x27;.gguf&#x27;)]&quot;</span></span><br><span class="line"><span class="comment"># Qwen3.8-27B-Q4_K_M.gguf  18973870432   ← 记下这个数</span></span><br></pre></td></tr></table></figure>
+
+<h3 id="拦路虎三：MSYS-的-curl-写文件报错-23（真坑）"><a href="#拦路虎三：MSYS-的-curl-写文件报错-23（真坑）" class="headerlink" title="拦路虎三：MSYS 的 curl 写文件报错 23（真坑）"></a>拦路虎三：MSYS 的 curl 写文件报错 23（真坑）</h3><p>套上续传循环后，每次都在写入时失败：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl: (23) client returned ERROR on write of 16384 bytes</span><br></pre></td></tr></table></figure>
+
+<p>排查过：磁盘空间充足（30GB+）、文件没被占用（用 Python 往同一文件写字节能成功）。结论是 <strong>Git Bash 自带 curl 在特定写入场景下的毛病</strong>，换实现比继续查快。</p>
+<p><strong>最终方案：Python urllib 断点续传脚本</strong>（改成自己的 URL&#x2F;路径&#x2F;大小就能直接用）：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> os, sys, time, urllib.request</span><br><span class="line"></span><br><span class="line">URL    = <span class="string">&quot;https://hf-mirror.com/ggml-org/Qwen3.8-27B-GGUF/resolve/main/Qwen3.8-27B-Q4_K_M.gguf&quot;</span></span><br><span class="line">PATH   = <span class="string">r&quot;D:\AI-LLM\models\Qwen3.8-27B-Q4_K_M.gguf&quot;</span></span><br><span class="line">TARGET = <span class="number">18973870432</span>          <span class="comment"># 上一步查到的真实大小</span></span><br><span class="line">CHUNK  = <span class="number">1</span> &lt;&lt; <span class="number">22</span>              <span class="comment"># 4MB</span></span><br><span class="line"></span><br><span class="line">attempt = <span class="number">0</span></span><br><span class="line"><span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">    sz = os.path.getsize(PATH)</span><br><span class="line">    <span class="keyword">if</span> sz &gt;= TARGET:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&quot;COMPLETE <span class="subst">&#123;sz&#125;</span>&quot;</span>, flush=<span class="literal">True</span>); <span class="keyword">break</span></span><br><span class="line">    attempt += <span class="number">1</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;attempt <span class="subst">&#123;attempt&#125;</span>: resume at <span class="subst">&#123;sz&#125;</span> (<span class="subst">&#123;<span class="number">100</span>*sz/TARGET:<span class="number">.1</span>f&#125;</span>%)&quot;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        req = urllib.request.Request(URL, headers=&#123;<span class="string">&quot;Range&quot;</span>: <span class="string">f&quot;bytes=<span class="subst">&#123;sz&#125;</span>-&quot;</span>&#125;)</span><br><span class="line">        r = urllib.request.urlopen(req, timeout=<span class="number">60</span>)</span><br><span class="line">        code = r.getcode()</span><br><span class="line">        <span class="comment"># 服务器忽略 Range 返回 200 时，绝不写入，否则前面全白下</span></span><br><span class="line">        <span class="keyword">if</span> code == <span class="number">200</span> <span class="keyword">and</span> sz &gt; <span class="number">0</span>:</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">&quot;  server ignored Range (200); abort to avoid overwrite&quot;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">            sys.exit(<span class="number">2</span>)</span><br><span class="line">        <span class="keyword">with</span> <span class="built_in">open</span>(PATH, <span class="string">&quot;ab&quot;</span>) <span class="keyword">as</span> f:</span><br><span class="line">            t0, got = time.time(), <span class="number">0</span></span><br><span class="line">            <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">                chunk = r.read(CHUNK)</span><br><span class="line">                <span class="keyword">if</span> <span class="keyword">not</span> chunk: <span class="keyword">break</span></span><br><span class="line">                f.write(chunk); got += <span class="built_in">len</span>(chunk)</span><br><span class="line">                <span class="keyword">if</span> got % (<span class="number">1</span> &lt;&lt; <span class="number">26</span>) &lt; CHUNK:   <span class="comment"># 每 ~64MB 报一次</span></span><br><span class="line">                    speed = got / <span class="built_in">max</span>(time.time() - t0, <span class="number">0.1</span>) / <span class="number">1e6</span></span><br><span class="line">                    <span class="built_in">print</span>(<span class="string">f&quot;  <span class="subst">&#123;os.path.getsize(PATH)&#125;</span> (<span class="subst">&#123;<span class="number">100</span>*os.path.getsize(PATH)/TARGET:<span class="number">.1</span>f&#125;</span>%) <span class="subst">&#123;speed:<span class="number">.1</span>f&#125;</span> MB/s&quot;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">    <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&quot;  error: <span class="subst">&#123;e&#125;</span>&quot;</span>, flush=<span class="literal">True</span>); time.sleep(<span class="number">3</span>)</span><br><span class="line">    time.sleep(<span class="number">1</span>)</span><br></pre></td></tr></table></figure>
+
+<p>两个关键点：</p>
+<ul>
+<li><strong>Range 请求 + 追加写（<code>ab</code>）</strong>：断线后用已下载字节数做偏移，从头循环。</li>
+<li><strong>拒绝 200 响应</strong>：服务器若忽略 Range 从头返回，追加写会把文件撑成两倍大的垃圾。<strong>直接退出让人处理，比静默损坏强</strong>。</li>
+</ul>
+<p>下完记得校验大小和文件头：</p>
+<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(PATH, <span class="string">&quot;rb&quot;</span>) <span class="keyword">as</span> f:</span><br><span class="line">    <span class="built_in">print</span>(f.read(<span class="number">4</span>))          <span class="comment"># b&#x27;GGUF&#x27;</span></span><br><span class="line"><span class="built_in">print</span>(os.path.getsize(PATH))  <span class="comment"># 18973870432</span></span><br></pre></td></tr></table></figure>
+
+<blockquote>
+<p>💡 <strong>附带一个 Windows 小坑</strong>：用 Windows 版 Python 跑脚本时，路径必须写成 <code>D:/xxx/yyy.py</code> 风格。Git Bash 的 <code>/d/xxx/yyy.py</code> 会被解析成 <code>C:\d\xxx\yyy.py</code>，然后报找不到文件。</p>
+</blockquote>
+<hr>
+<h2 id="🐛-第一个真坑：1-字-秒，显存超售的锅"><a href="#🐛-第一个真坑：1-字-秒，显存超售的锅" class="headerlink" title="🐛 第一个真坑：1 字&#x2F;秒，显存超售的锅"></a>🐛 第一个真坑：1 字&#x2F;秒，显存超售的锅</h2><p>模型加载正常、能出字，但速度只有 <strong>1.00 字&#x2F;秒</strong>。日志里有一行关键警告：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">W common_fit_params: failed to fit params to free device memory:</span><br><span class="line">  n_gpu_layers already set by user to 20, abort</span><br></pre></td></tr></table></figure>
+
+<p><strong>根因</strong>：我手动写死了 <code>--n-gpu-layers 20</code>，而此时显存被另一个常驻程序占着（只剩 3.2GB 可用），20 层的权重塞不下。</p>
+<p>Windows 的 WDDM 驱动模型这时候<strong>不会报 OOM</strong>，而是静默把 GPU 显存溢出到”共享 GPU 内存”——也就是走 PCIe 去系统内存搬。<strong>这比直接把层放 CPU 上还慢得多</strong>，于是掉到 1.0 字&#x2F;秒。</p>
+<blockquote>
+<p>⚠️ <strong>这个坑的阴险之处</strong>：它不报错、不崩溃，只是慢。你只会以为是”27B 本来就慢”，然后开始怀疑人生。</p>
+</blockquote>
+<p><strong>修法：别手写 <code>-ngl</code>，让 llama.cpp 自动拟合。</strong> 它启动时按当前真实空闲显存算能放几层，无论别的程序占没占显存都不会超售。</p>
+<hr>
+<h2 id="📊-实测：1-5-字-秒是物理极限，不是没调好"><a href="#📊-实测：1-5-字-秒是物理极限，不是没调好" class="headerlink" title="📊 实测：1.5 字&#x2F;秒是物理极限，不是没调好"></a>📊 实测：1.5 字&#x2F;秒是物理极限，不是没调好</h2><p>做了五组对照（每次都用全新 prompt，排除缓存干扰）：</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>生成速度</th>
+<th>读入速度</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>手动 <code>-ngl 20/22</code>（显存被占用时）</td>
+<td>1.00 字&#x2F;秒</td>
+<td>3~6 字&#x2F;秒</td>
+</tr>
+<tr>
+<td><strong>自动分层（不写 <code>-ngl</code>）</strong></td>
+<td><strong>1.59 字&#x2F;秒</strong></td>
+<td>5.6 字&#x2F;秒</td>
+</tr>
+<tr>
+<td>纯 CPU（<code>-ngl 0</code>）</td>
+<td>1.49 字&#x2F;秒</td>
+<td>4.9 字&#x2F;秒</td>
+</tr>
+<tr>
+<td>纯 CPU + 12 线程（<code>-t 12</code>）</td>
+<td>1.49 字&#x2F;秒</td>
+<td>6.2 字&#x2F;秒</td>
+</tr>
+<tr>
+<td>重启后干净环境（显存全空）</td>
+<td>1.58 字&#x2F;秒</td>
+<td>5.8 字&#x2F;秒</td>
+</tr>
+</tbody></table>
+<p>三个反直觉的结论：</p>
+<p><strong>① GPU 分层只带来 7% 提升。</strong> 按 Amdahl 定律，8GB 显存能放约 40% 的层，理论上限应该接近 1.6 倍，实际只有 1.07 倍。差额来自 Vulkan 在 RDNA2 上的 kernel 效率、跨设备提交开销，以及自动拟合本身很保守。</p>
+<p><strong>② 线程数对生成速度零影响。</strong> 12 线程只让读入快了 27%，生成纹丝不动——<strong>生成是带宽瓶颈，不是算力瓶颈</strong>。</p>
+<p><strong>③ 关掉其他程序腾出全部显存也没用。</strong> 1.58 &#x3D; 1.59，说明瓶颈根本不在显存。</p>
+<h3 id="算一笔账，验证是不是带宽"><a href="#算一笔账，验证是不是带宽" class="headerlink" title="算一笔账，验证是不是带宽"></a>算一笔账，验证是不是带宽</h3><p>生成一个 token 要把 17.7GB 权重完整读一遍。本机内存有效带宽约 25~30 GB&#x2F;s：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">17.7 GB ÷ 26 GB/s ≈ 0.68 秒/字  →  约 1.5 字/秒</span><br></pre></td></tr></table></figure>
+
+<p>和实测的 1.49~1.59 <strong>完全吻合</strong>。所以这个数字不是”没调好”，是内存带宽写死的。</p>
+<blockquote>
+<p>💡 <strong>顺带一提</strong>：上下文设太大（比如 256K）对生成速度没影响（混合注意力的 KV 很小），但<strong>读入会慢到不可用</strong>——长文档先想清楚再喂。</p>
+</blockquote>
+<hr>
+<h2 id="💡-想更快怎么办"><a href="#💡-想更快怎么办" class="headerlink" title="💡 想更快怎么办"></a>💡 想更快怎么办</h2><p>27B 在 8GB 卡上没有提速空间，唯一出路是<strong>换更小、能整进显存的模型</strong>：</p>
+<table>
+<thead>
+<tr>
+<th>方案</th>
+<th>体积</th>
+<th>预计速度</th>
+<th>代价</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Qwen3-8B Q4_K_M</td>
+<td>~5GB（可全进显存）</td>
+<td>15~25 字&#x2F;秒</td>
+<td>智力明显下降</td>
+</tr>
+<tr>
+<td>Qwen3-14B Q4_K_M</td>
+<td>~9GB（约七成进显存）</td>
+<td>4~6 字&#x2F;秒</td>
+<td>智力略降</td>
+</tr>
+<tr>
+<td>继续优化 27B 参数</td>
+<td>—</td>
+<td>上限 1.6 字&#x2F;秒</td>
+<td>无用功</td>
+</tr>
+</tbody></table>
+<p>一句话：<strong>交互聊天用小模型，长文&#x2F;批量用 27B</strong>。27B 的正确用法是”挂后台丢任务，去干别的”，不是一问一答。</p>
+<hr>
+<h2 id="🛠️-实用小贴士"><a href="#🛠️-实用小贴士" class="headerlink" title="🛠️ 实用小贴士"></a>🛠️ 实用小贴士</h2><ul>
+<li><strong>思考档位</strong>：Qwen3.8 默认 <code>reasoning_effort=xhigh</code>，会思考十几分钟。日常用 <code>medium</code>，急用 <code>low</code>，或者直接调 API 传参覆盖。</li>
+<li><strong>省时间</strong>：连续提问保持同一会话，prompt 缓存命中后读入快 3~5 倍（实测 45 token 命中缓存只需 1.1 秒，冷启动要 8 秒）。</li>
+<li><strong>冷启动</strong>：首次从磁盘读 17.7GB 约 1<del>2 分钟，第二次有系统缓存约 10</del>30 秒。</li>
+<li><strong>输出乱码</strong>：Vulkan 下混合注意力批处理有个已知 bug，加 <code>-ub 256</code> 或 <code>-ub 1024</code> 规避（避开默认 512）。</li>
+<li><strong>接入其他客户端</strong>：服务提供 OpenAI 兼容接口，Chatbox &#x2F; NextChat 之类填 <code>http://127.0.0.1:&lt;端口&gt;/v1</code>、模型名 <code>Qwen3.8-27B</code> 即可。</li>
+<li><strong>界面语言</strong>：llama.cpp 自带网页界面是英文且打包在 exe 里改不了。可以用 <code>--path &lt;目录&gt;</code> 指定自己的静态页面来替换。</li>
+</ul>
+<hr>
+<h2 id="✅-排错清单（照着查）"><a href="#✅-排错清单（照着查）" class="headerlink" title="✅ 排错清单（照着查）"></a>✅ 排错清单（照着查）</h2><table>
+<thead>
+<tr>
+<th>现象</th>
+<th>原因</th>
+<th>处理</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>日志出现 <code>failed to fit params ... n_gpu_layers already set</code></td>
+<td>手写 <code>-ngl</code> 导致显存超售</td>
+<td>删掉 <code>-ngl</code>，让程序自动拟合</td>
+</tr>
+<tr>
+<td>速度 1 字&#x2F;秒</td>
+<td>同上（WDDM 共享内存溢出）</td>
+<td>同上</td>
+</tr>
+<tr>
+<td>下载中断、curl 报 error 23</td>
+<td>Git Bash curl 写入问题</td>
+<td>换 Python urllib 续传脚本</td>
+</tr>
+<tr>
+<td>服务器忽略 Range 返回 200</td>
+<td>镜像站问题</td>
+<td>脚本里 <code>sys.exit(2)</code> 拒绝写入，别硬写</td>
+</tr>
+<tr>
+<td>Windows Python 报找不到脚本文件</td>
+<td>用了 <code>/d/xxx</code> 路径</td>
+<td>改成 <code>D:/xxx</code></td>
+</tr>
+<tr>
+<td>生成慢到不可用</td>
+<td>27B 在 8GB 卡的物理极限</td>
+<td>换小模型，别再调参</td>
+</tr>
+<tr>
+<td>回答前思考十几分钟</td>
+<td>默认 <code>xhigh</code> 档位</td>
+<td>设 <code>low</code> &#x2F; <code>medium</code></td>
+</tr>
+<tr>
+<td>输出乱码</td>
+<td>Vulkan 批处理 bug</td>
+<td><code>-ub 256</code> 或 <code>-ub 1024</code></td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="📝-写在最后"><a href="#📝-写在最后" class="headerlink" title="📝 写在最后"></a>📝 写在最后</h2><p>整个过程最大的体会：<strong>本地跑大模型，瓶颈往往不在显存，而在内存带宽</strong>。显卡能帮你一点点（7%），但决定上限的是内存每秒能喂给 CPU 多少 GB。</p>
+<p>如果你也是 8GB 显卡想跑 27B，记住这三句话：</p>
+<ol>
+<li><strong>别手写 <code>-ngl</code></strong>：自动拟合既省事又不会踩 WDDM 静默溢出的坑</li>
+<li><strong>1.5 字&#x2F;秒不是没调好</strong>：算一笔带宽账就明白了，别再调参</li>
+<li><strong>该换小模型就换</strong>：交互用小模型，长文批量才用 27B</li>
+</ol>
+<p>祝你也跑通 🎉</p>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          <div class="post-tags">
+              <a href="/tags/AMD/" rel="tag"># AMD</a>
+              <a href="/tags/%E6%8E%92%E9%94%99/" rel="tag"># 排错</a>
+              <a href="/tags/AI%E6%96%87%E7%AB%A0/" rel="tag"># AI文章</a>
+              <a href="/tags/GGUF/" rel="tag"># GGUF</a>
+              <a href="/tags/%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE/" rel="tag"># 实测数据</a>
+              <a href="/tags/%E5%8D%83%E9%97%AE/" rel="tag"># 千问</a>
+              <a href="/tags/Qwen3-8/" rel="tag"># Qwen3.8</a>
+              <a href="/tags/llama-cpp/" rel="tag"># llama.cpp</a>
+              <a href="/tags/Vulkan/" rel="tag"># Vulkan</a>
+              <a href="/tags/%E9%87%8F%E5%8C%96/" rel="tag"># 量化</a>
+          </div>
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2026/09/01/AMD%E6%98%BE%E5%8D%A1%E8%B7%91%E9%80%9AMiniMax-H3%E8%A7%86%E9%A2%91%E5%85%A8%E5%AE%B6%E6%A1%B6-ZLUDA%E4%B8%8EGGUF%E6%8E%92%E9%94%99%E5%AE%9E%E5%BD%95/" rel="prev" title="AMD显卡跑通MiniMax-H3视频全家桶：ZLUDA与GGUF排错实录">
+                  <i class="fa fa-angle-left"></i> AMD显卡跑通MiniMax-H3视频全家桶：ZLUDA与GGUF排错实录
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 
+    <span itemprop="copyrightYear">2026</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Retr67</span>
+  </div>
+  <div class="powered-by">由 <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/muse/" rel="noopener" target="_blank">NexT.Muse</a> 强力驱动
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="toggle sidebar-toggle" role="button">
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+    <span class="toggle-line"></span>
+  </div>
+  <div class="sidebar-dimmer"></div>
+  <div class="back-to-top" role="button" aria-label="返回顶部">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/sidebar.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

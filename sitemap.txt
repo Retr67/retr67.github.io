@@ -1,3 +1,4 @@
+https://retr67.github.io/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/
 https://retr67.github.io/2026/09/01/AMD%E6%98%BE%E5%8D%A1%E8%B7%91%E9%80%9AMiniMax-H3%E8%A7%86%E9%A2%91%E5%85%A8%E5%AE%B6%E6%A1%B6-ZLUDA%E4%B8%8EGGUF%E6%8E%92%E9%94%99%E5%AE%9E%E5%BD%95/
 https://retr67.github.io/2026/08/19/dsh%E6%8F%92%E4%BB%B6%E7%AE%A1%E7%90%86%E5%99%A8/
 https://retr67.github.io/2026/08/26/%E8%BF%99%E4%B8%AA%E5%BA%A7%E4%BD%8D%E6%9C%89%E4%BA%BA%E5%9D%90%E5%90%97/
@@ -171,3 +172,11 @@ https://retr67.github.io/tags/ComfyUI/
 https://retr67.github.io/tags/%E6%8E%92%E9%94%99/
 https://retr67.github.io/tags/AI%E6%96%87%E7%AB%A0/
 https://retr67.github.io/tags/LoRA/
+https://retr67.github.io/tags/GGUF/
+https://retr67.github.io/tags/%E5%9B%BE%E7%94%9F%E8%A7%86%E9%A2%91/
+https://retr67.github.io/tags/%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE/
+https://retr67.github.io/tags/%E5%8D%83%E9%97%AE/
+https://retr67.github.io/tags/Qwen3-8/
+https://retr67.github.io/tags/llama-cpp/
+https://retr67.github.io/tags/Vulkan/
+https://retr67.github.io/tags/%E9%87%8F%E5%8C%96/

@@ -2,9 +2,18 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   
   <url>
+    <loc>https://retr67.github.io/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/</loc>
+    
+    <lastmod>2026-09-02</lastmod>
+    
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  
+  <url>
     <loc>https://retr67.github.io/2026/09/01/AMD%E6%98%BE%E5%8D%A1%E8%B7%91%E9%80%9AMiniMax-H3%E8%A7%86%E9%A2%91%E5%85%A8%E5%AE%B6%E6%A1%B6-ZLUDA%E4%B8%8EGGUF%E6%8E%92%E9%94%99%E5%AE%9E%E5%BD%95/</loc>
     
-    <lastmod>2026-09-01</lastmod>
+    <lastmod>2026-09-02</lastmod>
     
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
@@ -1325,6 +1334,62 @@
   
   <url>
     <loc>https://retr67.github.io/tags/LoRA/</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://retr67.github.io/tags/GGUF/</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://retr67.github.io/tags/%E5%9B%BE%E7%94%9F%E8%A7%86%E9%A2%91/</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://retr67.github.io/tags/%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE/</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://retr67.github.io/tags/%E5%8D%83%E9%97%AE/</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://retr67.github.io/tags/Qwen3-8/</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://retr67.github.io/tags/llama-cpp/</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://retr67.github.io/tags/Vulkan/</loc>
+    <lastmod>2026-09-02</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.2</priority>
+  </url>
+  
+  <url>
+    <loc>https://retr67.github.io/tags/%E9%87%8F%E5%8C%96/</loc>
     <lastmod>2026-09-02</lastmod>
     <changefreq>weekly</changefreq>
     <priority>0.2</priority>

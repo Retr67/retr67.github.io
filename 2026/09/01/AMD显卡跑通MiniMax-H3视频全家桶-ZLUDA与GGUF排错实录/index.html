@@ -19,15 +19,15 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"retr67.github.io","root":"/","images":"/images","scheme":"Muse","darkmode":false,"version":"8.22.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js"></script>
 
-    <meta name="description" content="AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录 8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。   📖 前言MiniMax-H3 是支持文本生成视频（t2va）、首尾帧生成视频（ref2va）、图像生成视频（fl2">
+    <meta name="description" content="AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录 8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。   📖 前言MiniMax-H3 是支持文本生成视频（t2va）、参考图生成视频（ref2va）、首帧生成视频（fl2">
 <meta property="og:type" content="article">
 <meta property="og:title" content="AMD显卡跑通MiniMax-H3视频全家桶：ZLUDA与GGUF排错实录">
 <meta property="og:url" content="https://retr67.github.io/2026/09/01/AMD%E6%98%BE%E5%8D%A1%E8%B7%91%E9%80%9AMiniMax-H3%E8%A7%86%E9%A2%91%E5%85%A8%E5%AE%B6%E6%A1%B6-ZLUDA%E4%B8%8EGGUF%E6%8E%92%E9%94%99%E5%AE%9E%E5%BD%95/index.html">
 <meta property="og:site_name" content="Retr67的小站">
-<meta property="og:description" content="AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录 8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。   📖 前言MiniMax-H3 是支持文本生成视频（t2va）、首尾帧生成视频（ref2va）、图像生成视频（fl2">
+<meta property="og:description" content="AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录 8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。   📖 前言MiniMax-H3 是支持文本生成视频（t2va）、参考图生成视频（ref2va）、首帧生成视频（fl2">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-08-31T18:36:00.000Z">
-<meta property="article:modified_time" content="2026-09-01T22:15:28.295Z">
+<meta property="article:modified_time" content="2026-09-02T20:17:43.847Z">
 <meta property="article:author" content="Retr67">
 <meta property="article:tag" content="MiniMax">
 <meta property="article:tag" content="视频生成">
@@ -37,6 +37,9 @@
 <meta property="article:tag" content="排错">
 <meta property="article:tag" content="AI文章">
 <meta property="article:tag" content="LoRA">
+<meta property="article:tag" content="GGUF">
+<meta property="article:tag" content="图生视频">
+<meta property="article:tag" content="实测数据">
 <meta name="twitter:card" content="summary">
 
 
@@ -118,7 +121,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#AMD-%E6%98%BE%E5%8D%A1%E8%B7%91%E9%80%9A-MiniMax-H3-%E8%A7%86%E9%A2%91%E5%85%A8%E5%AE%B6%E6%A1%B6%EF%BC%9AZLUDA-GGUF-Q4-K-%E5%AE%8C%E6%95%B4%E5%AE%9E%E5%BD%95"><span class="nav-number">1.</span> <span class="nav-text">AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%96-%E5%89%8D%E8%A8%80"><span class="nav-number">1.1.</span> <span class="nav-text">📖 前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%8E%AF-%E6%9C%80%E7%BB%88%E6%96%B9%E6%A1%88"><span class="nav-number">1.2.</span> <span class="nav-text">🎯 最终方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%A7%B1-%E6%96%B9%E6%A1%88%E9%80%89%E5%9E%8B%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E6%8A%9B%E5%BC%83-int8-%E8%BD%AC%E6%8A%95-GGUF"><span class="nav-number">1.3.</span> <span class="nav-text">🧱 方案选型：为什么抛弃 int8 转投 GGUF</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%A6-%E6%A8%A1%E5%9E%8B%E4%B8%8E%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="nav-number">1.4.</span> <span class="nav-text">📦 模型与文件清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%A7-%E5%89%8D%E7%BD%AE%E8%A1%A5%E4%B8%81%EF%BC%9A%E8%AE%A9-ComfyUI-%E5%9C%A8-ZLUDA-%E4%B8%8A%E6%B4%BB%E4%B8%8B%E6%9D%A5"><span class="nav-number">1.5.</span> <span class="nav-text">🔧 前置补丁：让 ComfyUI 在 ZLUDA 上活下来</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E2%9A%A0%EF%B8%8F-%E6%9C%80%E5%A4%A7%E7%9A%84%E8%AE%A4%E7%9F%A5%E5%9D%91%EF%BC%9AZLUDA-%E4%BC%AA%E9%80%A0%E7%AE%97%E5%8A%9B"><span class="nav-number">1.5.1.</span> <span class="nav-text">⚠️ 最大的认知坑：ZLUDA 伪造算力</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%90%9B-GGUF-%E4%B8%93%E5%B1%9E%E5%B7%A8%E5%9D%91%EF%BC%9ABF16-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%EF%BC%88%E6%9C%AC%E6%96%87%E6%9C%80%E5%80%BC%E9%92%B1%E7%9A%84%E9%83%A8%E5%88%86%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">🐛 GGUF 专属巨坑：BF16 反序列化（本文最值钱的部分）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%A7%A9-%E5%B7%A5%E4%BD%9C%E6%B5%81%E6%90%AD%E5%BB%BA%EF%BC%9A%E9%AD%94%E6%94%B9%E7%89%88%E8%8A%82%E7%82%B9%E7%9A%84%E5%9D%91"><span class="nav-number">1.7.</span> <span class="nav-text">🧩 工作流搭建：魔改版节点的坑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%97%BA%EF%B8%8F-%E6%8E%92%E9%94%99%E8%B7%AF%E7%BA%BF%E5%9B%BE%EF%BC%88%E5%88%A4%E6%96%AD%E8%A1%A5%E4%B8%81%E6%98%AF%E5%90%A6%E7%94%9F%E6%95%88%E7%9A%84%E6%A0%87%E5%B0%BA%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">🗺️ 排错路线图（判断补丁是否生效的标尺）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%92%BE-%E5%86%85%E5%AD%98%E4%B8%8E%E6%80%A7%E8%83%BD%E7%AE%A1%E7%90%86"><span class="nav-number">1.9.</span> <span class="nav-text">💾 内存与性能管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%8A-%E7%95%AA%E5%A4%96%EF%BC%9A%E8%83%BD%E5%87%BA%E7%94%BB%E9%9D%A2%EF%BC%8C%E4%BD%86%E4%B8%BA%E4%BB%80%E4%B9%88%E6%B2%A1%E5%A3%B0%E9%9F%B3%EF%BC%9F"><span class="nav-number">1.10.</span> <span class="nav-text">🔊 番外：能出画面，但为什么没声音？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%B9%E5%9B%A0%E4%B8%80%EF%BC%9A%E8%A7%86%E9%A2%91%E5%92%8C%E9%9F%B3%E9%A2%91%E6%98%AF%E4%B8%A4%E5%A5%97%E7%8B%AC%E7%AB%8B-VAE"><span class="nav-number">1.10.1.</span> <span class="nav-text">根因一：视频和音频是两套独立 VAE</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%B9%E5%9B%A0%E4%BA%8C%EF%BC%9A%E9%9F%B3%E9%A2%91-latent-%E8%A2%AB%E9%9D%99%E9%BB%98%E4%B8%A2%E5%BC%83"><span class="nav-number">1.10.2.</span> <span class="nav-text">根因二：音频 latent 被静默丢弃</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E6%B3%95%EF%BC%9A%E9%80%9A%E7%94%A8%E9%9F%B3%E9%A2%91%E8%A7%A3%E7%A0%81%E8%8A%82%E7%82%B9%E5%B0%B1%E5%A4%9F"><span class="nav-number">1.10.3.</span> <span class="nav-text">解法：通用音频解码节点就够</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E2%9A%A1-%E7%95%AA%E5%A4%96%E4%BA%8C%EF%BC%9A4-%E6%AD%A5%E5%8A%A0%E9%80%9F-LoRA%EF%BC%8C%E4%B8%8E%E2%80%9D%E9%9D%99%E9%BB%98%E5%A4%B1%E6%95%88%E2%80%9D%E8%BF%99%E4%B8%AA%E9%9A%90%E5%BD%A2%E6%9D%80%E6%89%8B"><span class="nav-number">1.11.</span> <span class="nav-text">⚡ 番外二：4 步加速 LoRA，与”静默失效”这个隐形杀手</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9D%91%E4%B8%80%EF%BC%9A768p-%E7%89%88%E7%9A%84-shift-%E6%98%AF-6-3%EF%BC%8C%E4%B8%8D%E6%98%AF-12-3"><span class="nav-number">1.11.1.</span> <span class="nav-text">坑一：768p 版的 shift 是 6&#x2F;3，不是 12&#x2F;3</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9D%91%E4%BA%8C%EF%BC%9ALoRA-%E5%8A%A0%E8%BD%BD%E5%A4%B1%E8%B4%A5%E6%98%AF%E9%9D%99%E9%BB%98%E7%9A%84"><span class="nav-number">1.11.2.</span> <span class="nav-text">坑二：LoRA 加载失败是静默的</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%82%E6%95%B0%E5%AF%B9%E7%85%A7"><span class="nav-number">1.11.3.</span> <span class="nav-text">参数对照</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%A6%E5%A4%96%E4%B8%A4%E4%B8%AA%E5%B0%8F%E7%9F%A5%E8%AF%86"><span class="nav-number">1.11.4.</span> <span class="nav-text">另外两个小知识</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%B2%E7%9F%A5%E5%8F%96%E8%88%8D"><span class="nav-number">1.11.5.</span> <span class="nav-text">已知取舍</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%AE-%E4%B8%8B%E4%B8%80%E6%AD%A5"><span class="nav-number">1.12.</span> <span class="nav-text">🔮 下一步</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%9D-%E5%86%99%E5%9C%A8%E6%9C%80%E5%90%8E"><span class="nav-number">1.13.</span> <span class="nav-text">📝 写在最后</span></a></li></ol></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#AMD-%E6%98%BE%E5%8D%A1%E8%B7%91%E9%80%9A-MiniMax-H3-%E8%A7%86%E9%A2%91%E5%85%A8%E5%AE%B6%E6%A1%B6%EF%BC%9AZLUDA-GGUF-Q4-K-%E5%AE%8C%E6%95%B4%E5%AE%9E%E5%BD%95"><span class="nav-number">1.</span> <span class="nav-text">AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%96-%E5%89%8D%E8%A8%80"><span class="nav-number">1.1.</span> <span class="nav-text">📖 前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%8E%AF-%E6%9C%80%E7%BB%88%E6%96%B9%E6%A1%88"><span class="nav-number">1.2.</span> <span class="nav-text">🎯 最终方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%A7%B1-%E6%96%B9%E6%A1%88%E9%80%89%E5%9E%8B%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E6%8A%9B%E5%BC%83-int8-%E8%BD%AC%E6%8A%95-GGUF"><span class="nav-number">1.3.</span> <span class="nav-text">🧱 方案选型：为什么抛弃 int8 转投 GGUF</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%A6-%E6%A8%A1%E5%9E%8B%E4%B8%8E%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="nav-number">1.4.</span> <span class="nav-text">📦 模型与文件清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%A7-%E5%89%8D%E7%BD%AE%E8%A1%A5%E4%B8%81%EF%BC%9A%E8%AE%A9-ComfyUI-%E5%9C%A8-ZLUDA-%E4%B8%8A%E6%B4%BB%E4%B8%8B%E6%9D%A5"><span class="nav-number">1.5.</span> <span class="nav-text">🔧 前置补丁：让 ComfyUI 在 ZLUDA 上活下来</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E2%9A%A0%EF%B8%8F-%E6%9C%80%E5%A4%A7%E7%9A%84%E8%AE%A4%E7%9F%A5%E5%9D%91%EF%BC%9AZLUDA-%E4%BC%AA%E9%80%A0%E7%AE%97%E5%8A%9B"><span class="nav-number">1.5.1.</span> <span class="nav-text">⚠️ 最大的认知坑：ZLUDA 伪造算力</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%90%9B-GGUF-%E4%B8%93%E5%B1%9E%E5%B7%A8%E5%9D%91%EF%BC%9ABF16-%E5%8F%8D%E5%BA%8F%E5%88%97%E5%8C%96%EF%BC%88%E6%9C%AC%E6%96%87%E6%9C%80%E5%80%BC%E9%92%B1%E7%9A%84%E9%83%A8%E5%88%86%EF%BC%89"><span class="nav-number">1.6.</span> <span class="nav-text">🐛 GGUF 专属巨坑：BF16 反序列化（本文最值钱的部分）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%A7%A9-%E5%B7%A5%E4%BD%9C%E6%B5%81%E6%90%AD%E5%BB%BA%EF%BC%9A%E9%AD%94%E6%94%B9%E7%89%88%E8%8A%82%E7%82%B9%E7%9A%84%E5%9D%91"><span class="nav-number">1.7.</span> <span class="nav-text">🧩 工作流搭建：魔改版节点的坑</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%97%BA%EF%B8%8F-%E6%8E%92%E9%94%99%E8%B7%AF%E7%BA%BF%E5%9B%BE%EF%BC%88%E5%88%A4%E6%96%AD%E8%A1%A5%E4%B8%81%E6%98%AF%E5%90%A6%E7%94%9F%E6%95%88%E7%9A%84%E6%A0%87%E5%B0%BA%EF%BC%89"><span class="nav-number">1.8.</span> <span class="nav-text">🗺️ 排错路线图（判断补丁是否生效的标尺）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%92%BE-%E5%86%85%E5%AD%98%E4%B8%8E%E6%80%A7%E8%83%BD%E7%AE%A1%E7%90%86"><span class="nav-number">1.9.</span> <span class="nav-text">💾 内存与性能管理</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%8A-%E7%95%AA%E5%A4%96%EF%BC%9A%E8%83%BD%E5%87%BA%E7%94%BB%E9%9D%A2%EF%BC%8C%E4%BD%86%E4%B8%BA%E4%BB%80%E4%B9%88%E6%B2%A1%E5%A3%B0%E9%9F%B3%EF%BC%9F"><span class="nav-number">1.10.</span> <span class="nav-text">🔊 番外：能出画面，但为什么没声音？</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%B9%E5%9B%A0%E4%B8%80%EF%BC%9A%E8%A7%86%E9%A2%91%E5%92%8C%E9%9F%B3%E9%A2%91%E6%98%AF%E4%B8%A4%E5%A5%97%E7%8B%AC%E7%AB%8B-VAE"><span class="nav-number">1.10.1.</span> <span class="nav-text">根因一：视频和音频是两套独立 VAE</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%B9%E5%9B%A0%E4%BA%8C%EF%BC%9A%E9%9F%B3%E9%A2%91-latent-%E8%A2%AB%E9%9D%99%E9%BB%98%E4%B8%A2%E5%BC%83"><span class="nav-number">1.10.2.</span> <span class="nav-text">根因二：音频 latent 被静默丢弃</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%A7%A3%E6%B3%95%EF%BC%9A%E9%80%9A%E7%94%A8%E9%9F%B3%E9%A2%91%E8%A7%A3%E7%A0%81%E8%8A%82%E7%82%B9%E5%B0%B1%E5%A4%9F"><span class="nav-number">1.10.3.</span> <span class="nav-text">解法：通用音频解码节点就够</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E2%9A%A1-%E7%95%AA%E5%A4%96%E4%BA%8C%EF%BC%9A4-%E6%AD%A5%E5%8A%A0%E9%80%9F-LoRA%EF%BC%8C%E4%B8%8E%E2%80%9D%E9%9D%99%E9%BB%98%E5%A4%B1%E6%95%88%E2%80%9D%E8%BF%99%E4%B8%AA%E9%9A%90%E5%BD%A2%E6%9D%80%E6%89%8B"><span class="nav-number">1.11.</span> <span class="nav-text">⚡ 番外二：4 步加速 LoRA，与”静默失效”这个隐形杀手</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9D%91%E4%B8%80%EF%BC%9A768p-%E7%89%88%E7%9A%84-shift-%E6%98%AF-6-3%EF%BC%8C%E4%B8%8D%E6%98%AF-12-3"><span class="nav-number">1.11.1.</span> <span class="nav-text">坑一：768p 版的 shift 是 6&#x2F;3，不是 12&#x2F;3</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%9D%91%E4%BA%8C%EF%BC%9ALoRA-%E5%8A%A0%E8%BD%BD%E5%A4%B1%E8%B4%A5%E6%98%AF%E9%9D%99%E9%BB%98%E7%9A%84"><span class="nav-number">1.11.2.</span> <span class="nav-text">坑二：LoRA 加载失败是静默的</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%82%E6%95%B0%E5%AF%B9%E7%85%A7"><span class="nav-number">1.11.3.</span> <span class="nav-text">参数对照</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%8F%A6%E5%A4%96%E4%B8%A4%E4%B8%AA%E5%B0%8F%E7%9F%A5%E8%AF%86"><span class="nav-number">1.11.4.</span> <span class="nav-text">另外两个小知识</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%B7%B2%E7%9F%A5%E5%8F%96%E8%88%8D"><span class="nav-number">1.11.5.</span> <span class="nav-text">已知取舍</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%8A-%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE%EF%BC%9A8GB-%E6%98%BE%E5%AD%98%E7%9A%84%E7%9C%9F%E5%AE%9E%E6%88%90%E7%BB%A9%E5%8D%95"><span class="nav-number">1.12.</span> <span class="nav-text">📊 实测数据：8GB 显存的真实成绩单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%8E%AC-%E5%9B%BE%E7%94%9F%E8%A7%86%E9%A2%91%EF%BC%9A%E8%AE%A9%E5%9B%BA%E5%AE%9A%E4%BA%BA%E7%89%A9%E5%87%BA%E6%BC%94%E4%BB%BB%E6%84%8F%E5%9C%BA%E6%99%AF"><span class="nav-number">1.13.</span> <span class="nav-text">🎬 图生视频：让固定人物出演任意场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E2%9C%85-%E6%8E%92%E9%94%99-checklist%EF%BC%88%E6%94%B6%E8%97%8F%E7%89%88%EF%BC%89"><span class="nav-number">1.14.</span> <span class="nav-text">✅ 排错 checklist（收藏版）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%9D-%E5%86%99%E5%9C%A8%E6%9C%80%E5%90%8E"><span class="nav-number">1.15.</span> <span class="nav-text">📝 写在最后</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -131,13 +134,13 @@
   <nav class="site-state">
       <div class="site-state-item site-state-posts">
         <a href="/archives/">
-          <span class="site-state-item-count">57</span>
+          <span class="site-state-item-count">58</span>
           <span class="site-state-item-name">日志</span>
         </a>
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">114</span>
+        <span class="site-state-item-count">122</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -200,7 +203,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-09-02 06:15:28" itemprop="dateModified" datetime="2026-09-02T06:15:28+08:00">2026-09-02</time>
+      <time title="修改时间：2026-09-03 04:17:43" itemprop="dateModified" datetime="2026-09-03T04:17:43+08:00">2026-09-03</time>
     </span>
 
   
@@ -216,8 +219,8 @@
 <p>8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？<br>答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。</p>
 </blockquote>
 <hr>
-<h2 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h2><p>MiniMax-H3 是支持文本生成视频（t2va）、首尾帧生成视频（ref2va）、图像生成视频（fl2va）三合一的音视频联合生成模型，权重高达 41GB。正常来说这是 24GB 显存显卡的玩具。</p>
-<p>但我手里只有一张 <strong>AMD RX 6650 XT（8GB 显存）</strong>，还吃不到 CUDA 生态——只能靠 ZLUDA 翻译层把 CUDA 调用翻译成 AMD 的 HIP。整个过程中我换了两次技术方案、打了 8 个补丁、排了 14 轮错，最终用 <strong>GGUF Q4_K 量化</strong>把模型压到 10.6GB，成功跑进采样循环。</p>
+<h2 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h2><p>MiniMax-H3 是支持文本生成视频（t2va）、参考图生成视频（ref2va）、首帧生成视频（fl2va）三合一的音视频联合生成模型，权重高达 41GB。正常来说这是 24GB 显存显卡的玩具。</p>
+<p>但我手里只有一张 <strong>AMD RX 6650 XT（8GB 显存）</strong>，还吃不到 CUDA 生态——只能靠 ZLUDA 翻译层把 CUDA 调用翻译成 AMD 的 HIP。整个过程中我换了两次技术方案、打了 9 个补丁、排了 14 轮错，最终用 <strong>GGUF Q4_K 量化</strong>把模型压到 10.6GB，成功跑进采样循环。</p>
 <p>这篇文章是完整的操作记录和排错路线图，希望能帮你少走弯路。</p>
 <hr>
 <h2 id="🎯-最终方案"><a href="#🎯-最终方案" class="headerlink" title="🎯 最终方案"></a>🎯 最终方案</h2><table>
@@ -281,26 +284,45 @@
 <thead>
 <tr>
 <th>文件</th>
+<th>位置</th>
 <th>大小</th>
 <th>说明</th>
 </tr>
 </thead>
 <tbody><tr>
 <td><code>minimax_h3_fl2va_pruned-Q4_K.gguf</code></td>
+<td><code>models/diffusion_models/</code></td>
 <td>10.63GB</td>
 <td>主模型（unsloth 出品，HuggingFace 下载）</td>
 </tr>
 <tr>
 <td><code>qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors</code></td>
+<td><code>models/text_encoders/</code>（<strong>强制 CPU 加载</strong>，nvfp4 张量无法 <code>.to(cuda)</code>）</td>
 <td>15.7GB</td>
-<td>文本编码器（nvfp4 量化，只能 CPU 跑）</td>
+<td>文本编码器</td>
 </tr>
 <tr>
 <td><code>minimax_h3_video_vae_fp16.safetensors</code></td>
+<td><code>models/vae/</code></td>
 <td>5.2GB</td>
-<td>视频 VAE</td>
+<td>视频 VAE（解画面）</td>
+</tr>
+<tr>
+<td><code>minimax_h3_audio_vae_fp32.safetensors</code></td>
+<td><code>models/vae/</code></td>
+<td>577MB</td>
+<td><strong>音频 VAE（解声音，别漏）</strong></td>
+</tr>
+<tr>
+<td><code>minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors</code></td>
+<td><code>models/loras/</code></td>
+<td>1.87GB</td>
+<td>4 步 turbo LoRA</td>
 </tr>
 </tbody></table>
+<p><strong>启动参数</strong>：<code>--auto-launch --dont-upcast-attention --preview-method auto --use-quad-cross-attention</code></p>
+<p><strong>工作流</strong>：<code>minimax-h3-t2va-gguf-av-turbo4.json</code>（带音频 + 4 步加速，cfg 已默认 1.0）；图生视频另有 <code>minimax-h3-i2v-turbo4.json</code>（首帧驱动）与 <code>minimax-h3-ref2va-turbo4.json</code>（参考图模式）</p>
+<p><strong>最小验证参数</strong>：<code>416×256×22 帧 × 4 步 × cfg 1</code>，跑通后再放大。</p>
 <p><strong>下载技巧</strong>：HuggingFace 直连在国内基本不可用，换 <strong>hf-mirror.com 镜像</strong>（实测速度 35MB&#x2F;s）。下载完务必确认文件大小与仓库标注一致，不要留 <code>.part</code> 残留。</p>
 <hr>
 <h2 id="🔧-前置补丁：让-ComfyUI-在-ZLUDA-上活下来"><a href="#🔧-前置补丁：让-ComfyUI-在-ZLUDA-上活下来" class="headerlink" title="🔧 前置补丁：让 ComfyUI 在 ZLUDA 上活下来"></a>🔧 前置补丁：让 ComfyUI 在 ZLUDA 上活下来</h2><p>ZLUDA 环境下有 5 个补丁是<strong>缺一不可</strong>的，不补的话报错会随机出现在任何地方（因为 CUDA 上下文从启动起就坏了）。</p>
@@ -394,11 +416,11 @@
 </tr>
 <tr>
 <td><code>MiniMaxH3SigmaShift</code></td>
-<td><strong>必需节点</strong>（AV 采样器），shift_video&#x3D;12, shift_audio&#x3D;3</td>
+<td><strong>必需节点</strong>（AV 采样器），基础版 shift_video&#x3D;12 &#x2F; shift_audio&#x3D;3；配 768p turbo LoRA 改为 <strong>6 &#x2F; 3</strong></td>
 </tr>
 <tr>
 <td><code>KSampler</code></td>
-<td>最小验证参数：416×256×22帧 × 10步 × cfg5</td>
+<td>最小验证参数：416×256×22帧 × <strong>4 步 × cfg 1</strong>（配 turbo LoRA）；不配 LoRA 时 10 步 × cfg 5</td>
 </tr>
 </tbody></table>
 <hr>
@@ -554,36 +576,94 @@
 <td>3</td>
 </tr>
 <tr>
+<td><code>cfg</code></td>
+<td>5.0</td>
+<td><strong>1.0（实测后定为本工作流默认值）</strong></td>
+</tr>
+<tr>
 <td>sampler &#x2F; scheduler</td>
 <td>euler &#x2F; simple</td>
 <td>euler &#x2F; simple</td>
 </tr>
 </tbody></table>
 <p>注意 LoRA 必须插在 <strong>SigmaShift 之前</strong>。</p>
+<blockquote>
+<p>⚠️ <strong>cfg 这一行是实测改过的</strong>：蒸馏版 LoRA 学的是”无负向引导”的采样轨迹，cfg&#x3D;5 会把采样拽离蒸馏流形——实测表现是<strong>画面糊 + 帧间闪烁</strong>，而速度只比 cfg&#x3D;1 慢约 15%（见下方实测数据）。所以 cfg&#x3D;1.0 不是为了省时间，是<strong>画质必需</strong>。</p>
+</blockquote>
 <h3 id="另外两个小知识"><a href="#另外两个小知识" class="headerlink" title="另外两个小知识"></a>另外两个小知识</h3><p><strong>GGUF 量化模型叠 LoRA 会不会爆显存？</strong> 不会。ComfyUI-GGUF 对量化权重走的是<strong>延迟 patch</strong>：保持量化状态，把 patch 挂上去，等到真正 forward 时才逐层反量化合并——不会一次性把 10GB 模型展开成 bf16。对 8GB 显卡相当友好。</p>
 <p><strong>帧数不是随便填的。</strong> 官方工作流用 <code>max(5, round(a*24)) + (5 - (max(5, round(a*24)) % 17)) % 17</code> 来对齐帧数，等价于要求 <code>length % 17 == 5</code>（H3 的时间维压缩对齐）。124 帧正好合规（124 &#x3D; 7×17 + 5）。</p>
 <h3 id="已知取舍"><a href="#已知取舍" class="headerlink" title="已知取舍"></a>已知取舍</h3><ul>
 <li>turbo 模式下<strong>音频与运动质量略低于</strong>全步数版本（ComfyUI 官方文档口径）。</li>
-<li>LoRA 训练分辨率是 768p（1344×768），若实际跑 480p 则低于原生画布，画质增益会打折。</li>
-<li>显存吃紧时，把 <code>cfg</code> 降到 1.0 可以再省掉一半前向计算（负向不再参与）。</li>
+<li>LoRA 训练分辨率是 768p（1344×768），当前跑 864×480 低于原生画布，增益打折；显存允许可试 1344×768。</li>
+<li><del>显存吃紧时把 cfg 降到 1.0 可以省掉一半前向计算</del> → <strong>实测更正</strong>：cfg&#x3D;1 相对 cfg&#x3D;5 只快约 <strong>15%</strong>，远不到一半。原因见下节——lowvram 模式下瓶颈是 PCIe 搬运，不是算力。降 cfg 的正确理由是<strong>画质</strong>（消除糊和闪），不是省时间。</li>
 </ul>
 <hr>
-<h2 id="🔮-下一步"><a href="#🔮-下一步" class="headerlink" title="🔮 下一步"></a>🔮 下一步</h2><ul>
-<li><input checked="" disabled="" type="checkbox"> 480P 5 秒视频跑通</li>
-<li><input checked="" disabled="" type="checkbox"> 音频链路修复（音频 VAE + 通用音频解码节点，见上节）</li>
-<li><input checked="" disabled="" type="checkbox"> 4 步 turbo LoRA 就位（含键名前缀补丁，见上节）</li>
-<li><input disabled="" type="checkbox"> 验证音画同步与音质</li>
-<li><input disabled="" type="checkbox"> 验证 4 步加速的实际提速倍数与画质变化</li>
-<li><input disabled="" type="checkbox"> 测 t2va（纯文本）与 ref2va（首尾帧）变体</li>
-<li><input disabled="" type="checkbox"> 摸底 8GB 显存能扛的最大分辨率&#x2F;帧数</li>
+<h2 id="📊-实测数据：8GB-显存的真实成绩单"><a href="#📊-实测数据：8GB-显存的真实成绩单" class="headerlink" title="📊 实测数据：8GB 显存的真实成绩单"></a>📊 实测数据：8GB 显存的真实成绩单</h2><p>以上都是”能跑”，这一节回答”多慢”。同一台机（RX 6650 XT 8GB + 32GB 内存）：</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>全程耗时</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>416×256×22 帧 × 4 步 × cfg1</td>
+<td><strong>采样仅约 50 秒</strong></td>
+<td>冷启动总耗时 15~16 分钟，大头是模型加载 + CPU 文本编码</td>
+</tr>
+<tr>
+<td>864×480×124 帧 × 4 步 × cfg5</td>
+<td>1:05:01</td>
+<td>冷启动（约 6min 模型加载 + 约 10min CPU 文本编码）</td>
+</tr>
+<tr>
+<td>864×480×124 帧 × 4 步 × <strong>cfg1</strong></td>
+<td><strong>45:49</strong></td>
+<td>热机 + 提示词缓存命中，几乎纯采样&#x2F;解码</td>
+</tr>
+</tbody></table>
+<p>三个反直觉的结论：</p>
+<ol>
+<li><strong>cfg&#x3D;1.0 只快约 15%，不是理论上的 2 倍。</strong> lowvram 模式下每次前向都要从内存搬约 5.3GB 权重过 PCIe，瓶颈在<strong>搬运</strong>不在算力——砍掉负向分支省不了多少墙钟时间。<strong>想提速：降分辨率&#x2F;帧数 &gt; 固定提示词吃 CLIP 缓存 &gt; 降 cfg（最后才轮到它）。</strong></li>
+<li><strong>文本编码器走 CPU 是每段视频约 10 分钟的固定税。</strong> Qwen3-VL 32B 的 nvfp4 权重进不了显存，只能 CPU 编码。但提示词不变时命中 CLIP 缓存，10 分钟 → 约 2 分钟。所以<strong>批量出片固定提示词、只改 seed</strong> 最划算。</li>
+<li><strong>22 帧 ≈ 0.92 秒。</strong> 帧数换算别想当然：124 帧 @24fps 才约 5 秒，22 帧的”最小验证参数”其实不到 1 秒。</li>
+</ol>
+<blockquote>
+<p>💡 顺带一个排查经验：ComfyUI 的<strong>节点缓存</strong>会让同样参数的二次运行 0.28 秒就”跑完”。做计时测试务必改 seed，否则测的是缓存不是显卡。</p>
+</blockquote>
+<hr>
+<h2 id="🎬-图生视频：让固定人物出演任意场景"><a href="#🎬-图生视频：让固定人物出演任意场景" class="headerlink" title="🎬 图生视频：让固定人物出演任意场景"></a>🎬 图生视频：让固定人物出演任意场景</h2><p>H3 原生支持两条图生视频路线，都已跑通（turbo LoRA 通用，输出同样带声音）：</p>
+<p><strong>路线 A：首帧驱动（让这张图动起来）</strong><br><code>MiniMaxH3ImageToVideo</code> 有可选的 <code>first_frame</code> 输入。图片会被拉伸为视频第 0 帧作锚点，人物主体天然不变，模型续演出动作和声音。改动最小，适合”让这张图动起来”。</p>
+<p><strong>路线 B：参考图模式（主体一致、场景随便换）</strong><br><code>MiniMaxH3ReferenceToVideo</code> 节点，参考图最多 9 张（多角度图身份更稳），prompt 里用 <code>&lt;Picture 1&gt;</code> 标签指代，每换一段 prompt 就是一个新场景视频。注意：</p>
+<ul>
+<li>必须把 <strong>音频 VAE</strong> 接到节点的 <code>audio_vae</code> 输入，否则同样没声音</li>
+<li><code>ref_image_size=match</code> 快（参考图缩放到生成画布面积）；<code>max</code> 身份保真更好，但参考 token 每步参与采样，<strong>能慢数倍</strong></li>
+<li>⚠️ <strong>身份保持的下限取决于参考图质量</strong>：参考图过于简陋&#x2F;抽象时，模型会直接回退到训练数据里的”通用动漫人物”先验，参考图形同虚设——想锁定自己的角色，必须给清晰、特征明确的人物图</li>
 </ul>
+<hr>
+<h2 id="✅-排错-checklist（收藏版）"><a href="#✅-排错-checklist（收藏版）" class="headerlink" title="✅ 排错 checklist（收藏版）"></a>✅ 排错 checklist（收藏版）</h2><p>按这个顺序查，能覆盖 90% 的翻车场景：</p>
+<ol>
+<li>报错位置随机 → 先怀疑 ZLUDA context 损坏，确认前置补丁全部生效</li>
+<li>OOM 且权重文件 &gt;10GB → 换更小量化（int8 不行就 Q4_K）</li>
+<li>GGUF 加载报 <code>dtype uint8</code> → BF16 反序列化缺失，补分支</li>
+<li>出画面没声音 → 查音频 VAE 是否下载 + latent 是否接了 <code>VAEDecodeAudio</code></li>
+<li>LoRA 无效 → 日志搜 <code>lora key not loaded</code>，查架构键名前缀映射</li>
+<li>抄参数先核对「<strong>版本 + 分辨率</strong>」两列，只看”几步”必错</li>
+<li>崩溃重启前先杀 python 残留进程（可占 20GB+ 内存）</li>
+<li>turbo 模型画质崩（糊 + 闪）→ 先查 cfg 是不是没设 <strong>1.0</strong></li>
+<li>出片太慢 → 顺序：降分辨率&#x2F;帧数 &gt; 固定提示词吃 CLIP 缓存 &gt; 降 cfg（最后才轮到它）</li>
+<li>参考图模式人物不像 → 参考图质量问题，换清晰、多角度的人物图，或试 <code>ref_image_size=max</code></li>
+</ol>
 <hr>
 <h2 id="📝-写在最后"><a href="#📝-写在最后" class="headerlink" title="📝 写在最后"></a>📝 写在最后</h2><p>整个过程最大的体会：<strong>AMD 跑 AI 不是不行，是坑多</strong>。ZLUDA 伪造算力、分配器不兼容、GGUF 反序列化漏分支……每一个都是”看起来像玄学、查下去全是逻辑”的问题。</p>
-<p>如果你也是 AMD 用户想跑大模型，记住三句话：</p>
+<p>如果你也是 AMD 用户想跑大模型，记住这几句话：</p>
 <ol>
 <li>显存不够就上 Q4 量化，int8 只是减半，不够</li>
 <li>报错随机 ≠ 问题随机，先查 CUDA 上下文是否健康</li>
 <li>GGUF 的 BF16 张量，十有八九是反序列化问题</li>
+<li><strong>不报错的失败最贵</strong>：没声音、LoRA 不生效、参考图不生效，都不会报错。判断有没有生效要靠日志和 ablation，而不是”跑完了就算成功”</li>
+<li><strong>提速先降分辨率，别先降 cfg</strong>：8GB 卡的瓶颈是 PCIe 搬运，cfg 5→1 只快 15%，砍一档分辨率能快一倍</li>
 </ol>
 <p>祝你也跑通 🎉</p>
 
@@ -603,6 +683,9 @@
               <a href="/tags/%E6%8E%92%E9%94%99/" rel="tag"># 排错</a>
               <a href="/tags/AI%E6%96%87%E7%AB%A0/" rel="tag"># AI文章</a>
               <a href="/tags/LoRA/" rel="tag"># LoRA</a>
+              <a href="/tags/GGUF/" rel="tag"># GGUF</a>
+              <a href="/tags/%E5%9B%BE%E7%94%9F%E8%A7%86%E9%A2%91/" rel="tag"># 图生视频</a>
+              <a href="/tags/%E5%AE%9E%E6%B5%8B%E6%95%B0%E6%8D%AE/" rel="tag"># 实测数据</a>
           </div>
 
         
@@ -614,6 +697,9 @@
                 </a>
             </div>
             <div class="post-nav-item">
+                <a href="/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/" rel="next" title="8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测">
+                  8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测 <i class="fa fa-angle-right"></i>
+                </a>
             </div>
           </div>
     </footer>
