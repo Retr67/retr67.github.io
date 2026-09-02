@@ -180,3 +180,4 @@ https://retr67.github.io/tags/Qwen3-8/
 https://retr67.github.io/tags/llama-cpp/
 https://retr67.github.io/tags/Vulkan/
 https://retr67.github.io/tags/%E9%87%8F%E5%8C%96/
+https://retr67.github.io/tags/%E5%8E%BB%E5%AE%A1%E6%9F%A5/

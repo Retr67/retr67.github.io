@@ -19,15 +19,15 @@
 
 <script class="next-config" data-name="main" type="application/json">{"hostname":"retr67.github.io","root":"/","images":"/images","scheme":"Muse","darkmode":false,"version":"8.22.0","exturl":false,"sidebar":{"position":"left","width_expanded":320,"width_dual_column":240,"display":"post","padding":18,"offset":12},"hljswrap":true,"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"duration":200,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"i18n":{"placeholder":"搜索...","empty":"没有找到任何搜索结果：${query}","hits_time":"找到 ${hits} 个搜索结果（用时 ${time} 毫秒）","hits":"找到 ${hits} 个搜索结果"}}</script><script src="/js/config.js"></script>
 
-    <meta name="description" content="8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测 8GB 显存的 AMD 显卡，能不能本地跑一个 27B 参数的大语言模型？答案是：能，但只有 1.5 字&#x2F;秒。这篇记录我踩过的每一个坑，以及一组证明”这个速度不是没调好”的对照实测。   📖 前言Qwen3.8-27B 是 2026 年 8 月发布的 27B 稠密模型，Apache 2.0、原生多模">
+    <meta name="description" content="8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测 8GB 显存的 AMD 显卡，能不能本地跑一个 27B 参数的大语言模型？答案是：能，但只有 1.5 字&#x2F;秒。这篇记录我踩过的每一个坑，以及一组证明”这个速度不是没调好”的对照实测。 📌 本文分两部：第一部（前半）记录跑通官方版的全过程；第二部（「限制从哪来」起）记录发现限制在权重层、换去审查版并横">
 <meta property="og:type" content="article">
-<meta property="og:title" content="8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测">
+<meta property="og:title" content="8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测（含去审查版与量化横评）">
 <meta property="og:url" content="https://retr67.github.io/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/index.html">
 <meta property="og:site_name" content="Retr67的小站">
-<meta property="og:description" content="8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测 8GB 显存的 AMD 显卡，能不能本地跑一个 27B 参数的大语言模型？答案是：能，但只有 1.5 字&#x2F;秒。这篇记录我踩过的每一个坑，以及一组证明”这个速度不是没调好”的对照实测。   📖 前言Qwen3.8-27B 是 2026 年 8 月发布的 27B 稠密模型，Apache 2.0、原生多模">
+<meta property="og:description" content="8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测 8GB 显存的 AMD 显卡，能不能本地跑一个 27B 参数的大语言模型？答案是：能，但只有 1.5 字&#x2F;秒。这篇记录我踩过的每一个坑，以及一组证明”这个速度不是没调好”的对照实测。 📌 本文分两部：第一部（前半）记录跑通官方版的全过程；第二部（「限制从哪来」起）记录发现限制在权重层、换去审查版并横">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-09-02T20:20:00.000Z">
-<meta property="article:modified_time" content="2026-09-02T20:20:38.836Z">
+<meta property="article:modified_time" content="2026-09-02T21:42:43.541Z">
 <meta property="article:author" content="Retr67">
 <meta property="article:tag" content="AMD">
 <meta property="article:tag" content="排错">
@@ -39,16 +39,17 @@
 <meta property="article:tag" content="llama.cpp">
 <meta property="article:tag" content="Vulkan">
 <meta property="article:tag" content="量化">
+<meta property="article:tag" content="去审查">
 <meta name="twitter:card" content="summary">
 
 
 <link rel="canonical" href="https://retr67.github.io/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/">
 
 
-<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://retr67.github.io/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/","path":"2026/09/03/博客-8GB显卡本地跑通千问3.8-27B-llama.cpp-Vulkan踩坑与实测/","title":"8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测"}</script>
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"zh-CN","comments":true,"permalink":"https://retr67.github.io/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/","path":"2026/09/03/博客-8GB显卡本地跑通千问3.8-27B-llama.cpp-Vulkan踩坑与实测/","title":"8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测（含去审查版与量化横评）"}</script>
 
 <script class="next-config" data-name="calendar" type="application/json">""</script>
-<title>8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测 | Retr67的小站</title>
+<title>8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测（含去审查版与量化横评） | Retr67的小站</title>
   
 
 
@@ -120,7 +121,7 @@
       <div class="sidebar-panel-container">
         <!--noindex-->
         <div class="post-toc-wrap sidebar-panel">
-            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#8GB-%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE-3-8-27B%EF%BC%9Allama-cpp-Vulkan-%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B"><span class="nav-number">1.</span> <span class="nav-text">8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%96-%E5%89%8D%E8%A8%80"><span class="nav-number">1.1.</span> <span class="nav-text">📖 前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%8E%AF-%E6%9C%80%E7%BB%88%E6%96%B9%E6%A1%88"><span class="nav-number">1.2.</span> <span class="nav-text">🎯 最终方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%A7%B1-%E6%96%B9%E6%A1%88%E9%80%89%E5%9E%8B%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E6%98%AF-Q4-K-M-Vulkan"><span class="nav-number">1.3.</span> <span class="nav-text">🧱 方案选型：为什么是 Q4_K_M + Vulkan</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%80%89-Qwen3-8-27B"><span class="nav-number">1.3.1.</span> <span class="nav-text">为什么选 Qwen3.8-27B</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%87%8F%E5%8C%96%E6%A1%A3%E4%BD%8D%EF%BC%9A8GB-%E5%8D%A1%E5%8F%AA%E6%9C%89-Q4-%E8%BF%99%E4%B8%80%E4%B8%AA%E6%B4%BB%E5%8F%A3"><span class="nav-number">1.3.2.</span> <span class="nav-text">量化档位：8GB 卡只有 Q4 这一个活口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A8%E7%90%86%E5%90%8E%E7%AB%AF%EF%BC%9AVulkan-%E6%98%AF-Windows-AMD-%E7%9A%84%E6%9C%80%E4%BC%98%E8%A7%A3"><span class="nav-number">1.3.3.</span> <span class="nav-text">推理后端：Vulkan 是 Windows + AMD 的最优解</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%A6-%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="nav-number">1.4.</span> <span class="nav-text">📦 文件清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%A5-%E4%B8%8B%E8%BD%BD%E5%85%B3%EF%BC%9A17-7GB-%E6%80%8E%E4%B9%88%E4%B8%8D%E6%96%AD%E7%BA%BF"><span class="nav-number">1.5.</span> <span class="nav-text">📥 下载关：17.7GB 怎么不断线</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A6%E8%B7%AF%E8%99%8E%E4%B8%80%EF%BC%9AGitHub-%E4%B8%8B%E4%B8%8D%E5%8A%A8-%E2%86%92-%E6%8D%A2%E9%95%9C%E5%83%8F"><span class="nav-number">1.5.1.</span> <span class="nav-text">拦路虎一：GitHub 下不动 → 换镜像</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A6%E8%B7%AF%E8%99%8E%E4%BA%8C%EF%BC%9Ahf-mirror-%E9%95%BF%E8%BF%9E%E6%8E%A5%E8%A2%AB%E6%8E%90%E6%96%AD"><span class="nav-number">1.5.2.</span> <span class="nav-text">拦路虎二：hf-mirror 长连接被掐断</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A6%E8%B7%AF%E8%99%8E%E4%B8%89%EF%BC%9AMSYS-%E7%9A%84-curl-%E5%86%99%E6%96%87%E4%BB%B6%E6%8A%A5%E9%94%99-23%EF%BC%88%E7%9C%9F%E5%9D%91%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">拦路虎三：MSYS 的 curl 写文件报错 23（真坑）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%90%9B-%E7%AC%AC%E4%B8%80%E4%B8%AA%E7%9C%9F%E5%9D%91%EF%BC%9A1-%E5%AD%97-%E7%A7%92%EF%BC%8C%E6%98%BE%E5%AD%98%E8%B6%85%E5%94%AE%E7%9A%84%E9%94%85"><span class="nav-number">1.6.</span> <span class="nav-text">🐛 第一个真坑：1 字&#x2F;秒，显存超售的锅</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%8A-%E5%AE%9E%E6%B5%8B%EF%BC%9A1-5-%E5%AD%97-%E7%A7%92%E6%98%AF%E7%89%A9%E7%90%86%E6%9E%81%E9%99%90%EF%BC%8C%E4%B8%8D%E6%98%AF%E6%B2%A1%E8%B0%83%E5%A5%BD"><span class="nav-number">1.7.</span> <span class="nav-text">📊 实测：1.5 字&#x2F;秒是物理极限，不是没调好</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AE%97%E4%B8%80%E7%AC%94%E8%B4%A6%EF%BC%8C%E9%AA%8C%E8%AF%81%E6%98%AF%E4%B8%8D%E6%98%AF%E5%B8%A6%E5%AE%BD"><span class="nav-number">1.7.1.</span> <span class="nav-text">算一笔账，验证是不是带宽</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%92%A1-%E6%83%B3%E6%9B%B4%E5%BF%AB%E6%80%8E%E4%B9%88%E5%8A%9E"><span class="nav-number">1.8.</span> <span class="nav-text">💡 想更快怎么办</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%9B%A0%EF%B8%8F-%E5%AE%9E%E7%94%A8%E5%B0%8F%E8%B4%B4%E5%A3%AB"><span class="nav-number">1.9.</span> <span class="nav-text">🛠️ 实用小贴士</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E2%9C%85-%E6%8E%92%E9%94%99%E6%B8%85%E5%8D%95%EF%BC%88%E7%85%A7%E7%9D%80%E6%9F%A5%EF%BC%89"><span class="nav-number">1.10.</span> <span class="nav-text">✅ 排错清单（照着查）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%9D-%E5%86%99%E5%9C%A8%E6%9C%80%E5%90%8E"><span class="nav-number">1.11.</span> <span class="nav-text">📝 写在最后</span></a></li></ol></li></ol></div>
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#8GB-%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE-3-8-27B%EF%BC%9Allama-cpp-Vulkan-%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B"><span class="nav-number">1.</span> <span class="nav-text">8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%96-%E5%89%8D%E8%A8%80"><span class="nav-number">1.1.</span> <span class="nav-text">📖 前言</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%8E%AF-%E6%9C%80%E7%BB%88%E6%96%B9%E6%A1%88"><span class="nav-number">1.2.</span> <span class="nav-text">🎯 最终方案</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%A7%B1-%E6%96%B9%E6%A1%88%E9%80%89%E5%9E%8B%EF%BC%9A%E4%B8%BA%E4%BB%80%E4%B9%88%E6%98%AF-Q4-K-M-Vulkan"><span class="nav-number">1.3.</span> <span class="nav-text">🧱 方案选型：为什么是 Q4_K_M + Vulkan</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E4%B8%BA%E4%BB%80%E4%B9%88%E9%80%89-Qwen3-8-27B"><span class="nav-number">1.3.1.</span> <span class="nav-text">为什么选 Qwen3.8-27B</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E9%87%8F%E5%8C%96%E6%A1%A3%E4%BD%8D%EF%BC%9A8GB-%E5%8D%A1%E5%8F%AA%E6%9C%89-Q4-%E8%BF%99%E4%B8%80%E4%B8%AA%E6%B4%BB%E5%8F%A3"><span class="nav-number">1.3.2.</span> <span class="nav-text">量化档位：8GB 卡只有 Q4 这一个活口</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A8%E7%90%86%E5%90%8E%E7%AB%AF%EF%BC%9AVulkan-%E6%98%AF-Windows-AMD-%E7%9A%84%E6%9C%80%E4%BC%98%E8%A7%A3"><span class="nav-number">1.3.3.</span> <span class="nav-text">推理后端：Vulkan 是 Windows + AMD 的最优解</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%A6-%E6%96%87%E4%BB%B6%E6%B8%85%E5%8D%95"><span class="nav-number">1.4.</span> <span class="nav-text">📦 文件清单</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%A5-%E4%B8%8B%E8%BD%BD%E5%85%B3%EF%BC%9A17-7GB-%E6%80%8E%E4%B9%88%E4%B8%8D%E6%96%AD%E7%BA%BF"><span class="nav-number">1.5.</span> <span class="nav-text">📥 下载关：17.7GB 怎么不断线</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A6%E8%B7%AF%E8%99%8E%E4%B8%80%EF%BC%9AGitHub-%E4%B8%8B%E4%B8%8D%E5%8A%A8-%E2%86%92-%E6%8D%A2%E9%95%9C%E5%83%8F"><span class="nav-number">1.5.1.</span> <span class="nav-text">拦路虎一：GitHub 下不动 → 换镜像</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A6%E8%B7%AF%E8%99%8E%E4%BA%8C%EF%BC%9Ahf-mirror-%E9%95%BF%E8%BF%9E%E6%8E%A5%E8%A2%AB%E6%8E%90%E6%96%AD"><span class="nav-number">1.5.2.</span> <span class="nav-text">拦路虎二：hf-mirror 长连接被掐断</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8B%A6%E8%B7%AF%E8%99%8E%E4%B8%89%EF%BC%9AMSYS-%E7%9A%84-curl-%E5%86%99%E6%96%87%E4%BB%B6%E6%8A%A5%E9%94%99-23%EF%BC%88%E7%9C%9F%E5%9D%91%EF%BC%89"><span class="nav-number">1.5.3.</span> <span class="nav-text">拦路虎三：MSYS 的 curl 写文件报错 23（真坑）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%90%9B-%E7%AC%AC%E4%B8%80%E4%B8%AA%E7%9C%9F%E5%9D%91%EF%BC%9A1-%E5%AD%97-%E7%A7%92%EF%BC%8C%E6%98%BE%E5%AD%98%E8%B6%85%E5%94%AE%E7%9A%84%E9%94%85"><span class="nav-number">1.6.</span> <span class="nav-text">🐛 第一个真坑：1 字&#x2F;秒，显存超售的锅</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%8A-%E5%AE%9E%E6%B5%8B%EF%BC%9A1-5-%E5%AD%97-%E7%A7%92%E6%98%AF%E7%89%A9%E7%90%86%E6%9E%81%E9%99%90%EF%BC%8C%E4%B8%8D%E6%98%AF%E6%B2%A1%E8%B0%83%E5%A5%BD"><span class="nav-number">1.7.</span> <span class="nav-text">📊 实测：1.5 字&#x2F;秒是物理极限，不是没调好</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AE%97%E4%B8%80%E7%AC%94%E8%B4%A6%EF%BC%8C%E9%AA%8C%E8%AF%81%E6%98%AF%E4%B8%8D%E6%98%AF%E5%B8%A6%E5%AE%BD"><span class="nav-number">1.7.1.</span> <span class="nav-text">算一笔账，验证是不是带宽</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%92%A1-%E6%83%B3%E6%9B%B4%E5%BF%AB%E6%80%8E%E4%B9%88%E5%8A%9E"><span class="nav-number">1.8.</span> <span class="nav-text">💡 想更快怎么办</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%9B%A0%EF%B8%8F-%E5%AE%9E%E7%94%A8%E5%B0%8F%E8%B4%B4%E5%A3%AB"><span class="nav-number">1.9.</span> <span class="nav-text">🛠️ 实用小贴士</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E2%9C%85-%E6%8E%92%E9%94%99%E6%B8%85%E5%8D%95%EF%BC%88%E7%85%A7%E7%9D%80%E6%9F%A5%EF%BC%89"><span class="nav-number">1.10.</span> <span class="nav-text">✅ 排错清单（照着查）</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%94%84-%E7%AC%AC%E4%BA%8C%E9%83%A8%EF%BC%9A%E9%99%90%E5%88%B6%E4%BB%8E%E5%93%AA%E6%9D%A5%EF%BC%8C%E5%8E%BB%E5%AE%A1%E6%9F%A5%E7%89%88%E6%80%8E%E4%B9%88%E9%80%89%EF%BC%8C1bit%E2%86%92Q4-%E6%A8%AA%E8%AF%84"><span class="nav-number">1.11.</span> <span class="nav-text">🔄 第二部：限制从哪来，去审查版怎么选，1bit→Q4 横评</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%F0%9F%94%8D-%E9%99%90%E5%88%B6%E5%9C%A8%E6%9D%83%E9%87%8D%E5%B1%82%EF%BC%8C%E4%B8%8D%E5%9C%A8%E9%85%8D%E7%BD%AE%E5%B1%82"><span class="nav-number">1.11.1.</span> <span class="nav-text">🔍 限制在权重层，不在配置层</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%F0%9F%93%A5-%E5%8E%BB%E5%AE%A1%E6%9F%A5%E6%A8%A1%E5%9E%8B%E6%80%8E%E4%B9%88%E9%80%89"><span class="nav-number">1.11.2.</span> <span class="nav-text">📥 去审查模型怎么选</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E2%9A%96%EF%B8%8F-%E5%85%A8%E5%AE%B6%E6%A1%B6%E6%A8%AA%E8%AF%84%EF%BC%88%E5%AE%98%E6%96%B9-Q4-3bit-1bit-MTP%EF%BC%89"><span class="nav-number">1.11.3.</span> <span class="nav-text">⚖️ 全家桶横评（官方 &#x2F; Q4 &#x2F; 3bit &#x2F; 1bit &#x2F; MTP）</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E2%9A%A1-MTP-%E5%AE%9E%E6%B5%8B%EF%BC%9A%E6%BF%80%E6%B4%BB%E6%88%90%E5%8A%9F%EF%BC%8C%E4%BD%86%E8%BF%99%E5%8F%B0%E6%9C%BA%E5%99%A8%E7%94%A8%E4%B8%8D%E8%B5%B7"><span class="nav-number">1.11.4.</span> <span class="nav-text">⚡ MTP 实测：激活成功，但这台机器用不起</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%F0%9F%9B%A0%EF%B8%8F-%E5%88%A0%E9%99%A4%E4%B8%8E%E2%80%9D%E5%81%87%E5%88%A0%E9%99%A4%E2%80%9D%E5%9D%91"><span class="nav-number">1.11.5.</span> <span class="nav-text">🛠️ 删除与”假删除”坑</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E2%9C%85-%E6%9C%80%E7%BB%88%E9%85%8D%E7%BD%AE%E9%80%9F%E6%9F%A5%EF%BC%88%E7%8E%B0%E5%BD%B9%EF%BC%89"><span class="nav-number">1.11.6.</span> <span class="nav-text">✅ 最终配置速查（现役）</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%F0%9F%93%9D-%E5%86%99%E5%9C%A8%E6%9C%80%E5%90%8E"><span class="nav-number">1.12.</span> <span class="nav-text">📝 写在最后</span></a></li></ol></li></ol></div>
         </div>
         <!--/noindex-->
 
@@ -139,7 +140,7 @@
       </div>
       <div class="site-state-item site-state-tags">
           <a href="/tags/">
-        <span class="site-state-item-count">122</span>
+        <span class="site-state-item-count">123</span>
         <span class="site-state-item-name">标签</span></a>
       </div>
   </nav>
@@ -179,12 +180,12 @@
     </span>
 
     <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
-      <meta itemprop="name" content="8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测 | Retr67的小站">
+      <meta itemprop="name" content="8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测（含去审查版与量化横评） | Retr67的小站">
       <meta itemprop="description" content="">
     </span>
       <header class="post-header">
         <h1 class="post-title" itemprop="name headline">
-          8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测
+          8GB显卡本地跑通千问3.8-27B：llama.cpp Vulkan踩坑与实测（含去审查版与量化横评）
         </h1>
 
         <div class="post-meta-container">
@@ -196,7 +197,7 @@
       <span class="post-meta-item-text">发表于</span>
       
 
-      <time title="创建时间：2026-09-03 04:20:00 / 修改时间：04:20:38" itemprop="dateCreated datePublished" datetime="2026-09-03T04:20:00+08:00">2026-09-03</time>
+      <time title="创建时间：2026-09-03 04:20:00 / 修改时间：05:42:43" itemprop="dateCreated datePublished" datetime="2026-09-03T04:20:00+08:00">2026-09-03</time>
     </span>
 
   
@@ -210,6 +211,7 @@
     
     <div class="post-body" itemprop="articleBody"><h1 id="8GB-显卡本地跑通千问-3-8-27B：llama-cpp-Vulkan-踩坑与实测"><a href="#8GB-显卡本地跑通千问-3-8-27B：llama-cpp-Vulkan-踩坑与实测" class="headerlink" title="8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测"></a>8GB 显卡本地跑通千问 3.8-27B：llama.cpp Vulkan 踩坑与实测</h1><blockquote>
 <p>8GB 显存的 AMD 显卡，能不能本地跑一个 27B 参数的大语言模型？<br>答案是：能，但只有 <strong>1.5 字&#x2F;秒</strong>。这篇记录我踩过的每一个坑，以及一组证明”这个速度不是没调好”的对照实测。</p>
+<p>📌 <strong>本文分两部</strong>：第一部（前半）记录跑通官方版的全过程；第二部（「限制从哪来」起）记录发现限制在权重层、换去审查版并横评 1bit→Q4 全家桶的后续实测。官方版已在第二部末尾删除，现役为去审查版。</p>
 </blockquote>
 <hr>
 <h2 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h2><p>Qwen3.8-27B 是 2026 年 8 月发布的 27B 稠密模型，Apache 2.0、原生多模态、256K 上下文，官方还直接出了 GGUF。听起来很适合本地部署——直到你看到体积：<strong>Q4_K_M 量化后仍有 17.7GB</strong>。</p>
@@ -331,7 +333,10 @@
 
 <p>看到显卡型号的那一刻基本就成了。</p>
 <hr>
-<h2 id="📦-文件清单"><a href="#📦-文件清单" class="headerlink" title="📦 文件清单"></a>📦 文件清单</h2><table>
+<h2 id="📦-文件清单"><a href="#📦-文件清单" class="headerlink" title="📦 文件清单"></a>📦 文件清单</h2><blockquote>
+<p>⚠️ <strong>更新（见本文第二部）</strong>：以下为<strong>第一部跑通官方版时</strong>的记录，官方版权重后来已在横评后删除。现役文件为去审查版 Heretic Q4_K_M（16.55GB）+ RVN-IQ3_XXS（11.19GB）+ mmproj 视觉投影（629MB），最终清单见第二部「最终配置速查」。</p>
+</blockquote>
+<table>
 <thead>
 <tr>
 <th>文件</th>
@@ -541,12 +546,172 @@
 </tr>
 </tbody></table>
 <hr>
-<h2 id="📝-写在最后"><a href="#📝-写在最后" class="headerlink" title="📝 写在最后"></a>📝 写在最后</h2><p>整个过程最大的体会：<strong>本地跑大模型，瓶颈往往不在显存，而在内存带宽</strong>。显卡能帮你一点点（7%），但决定上限的是内存每秒能喂给 CPU 多少 GB。</p>
-<p>如果你也是 8GB 显卡想跑 27B，记住这三句话：</p>
+<h2 id="🔄-第二部：限制从哪来，去审查版怎么选，1bit→Q4-横评"><a href="#🔄-第二部：限制从哪来，去审查版怎么选，1bit→Q4-横评" class="headerlink" title="🔄 第二部：限制从哪来，去审查版怎么选，1bit→Q4 横评"></a>🔄 第二部：限制从哪来，去审查版怎么选，1bit→Q4 横评</h2><blockquote>
+<p>跑通只是第一步。接着自然遇到一个灵魂问题：<strong>都本地部署了，为什么它还各种拒绝？</strong><br>这一部给结论：限制在权重里不在配置里；换社区去审查（abliterated）权重是唯一出路；然后用一次五模型横评决定留谁删谁。</p>
+</blockquote>
+<h3 id="🔍-限制在权重层，不在配置层"><a href="#🔍-限制在权重层，不在配置层" class="headerlink" title="🔍 限制在权重层，不在配置层"></a>🔍 限制在权重层，不在配置层</h3><p>先怀疑配置：很多部署会在 system prompt 或模板里注入限制，那种情况改提示词就能解。所以我 dump 了官方 GGUF 元数据验证：</p>
+<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">GGUF v3  tensors=851  metadata_kv=39</span><br><span class="line">general.architecture = qwen35    ← 没有 chat_template 键</span><br><span class="line">general.name = Qwen3.8-27B       ← 没有 system prompt 键</span><br></pre></td></tr></table></figure>
+
+<p><strong>39 个键里既没有 system prompt 也没有 chat_template</strong>——llama.cpp 用的是内置模板。结论干净利落：</p>
+<blockquote>
+<p><strong>限制 100% 在权重里</strong>。拒绝倾向是训练阶段用 SFT + RLHF 直接写进参数的，GGUF 量化只压缩数字精度不改变模型学过什么。中文大厂模型的合规对齐尤其彻底，<strong>权重在哪，限制就在哪</strong>——这就是为什么改 system prompt 无效，唯一出路是换权重。</p>
+</blockquote>
+<blockquote>
+<p>💡 不是所有”拒绝”都是审查：模型真不会时会拒答、推理模型天生保守、多模态还有一层图像护栏。这些换任何版本都解决不了。</p>
+</blockquote>
+<h3 id="📥-去审查模型怎么选"><a href="#📥-去审查模型怎么选" class="headerlink" title="📥 去审查模型怎么选"></a>📥 去审查模型怎么选</h3><p>社区成品 GGUF（原模型 Apache 2.0，改版无许可问题）：</p>
+<table>
+<thead>
+<tr>
+<th>仓库</th>
+<th>量化</th>
+<th>下载量</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF</code></td>
+<td>Q4_K_L 等</td>
+<td>187 万</td>
+</tr>
+<tr>
+<td><code>JonathanColetti/Qwen3.8-27B-Uncensored-GGUF</code></td>
+<td>Q4_K_M 等</td>
+<td>214 万</td>
+</tr>
+<tr>
+<td><code>0bserverx/...Heretic-Abliterated-Uncensored-GGUF</code></td>
+<td>Q4_K_M ~ IQ1_S 全档</td>
+<td>121 万</td>
+</tr>
+<tr>
+<td><code>orcarouter/Qwen3.8-27B-Uncensored-GGUF</code></td>
+<td>Q4_K_M 等</td>
+<td>25 万</td>
+</tr>
+</tbody></table>
+<p>我选 <code>0bserverx</code> 的 Heretic 系——<strong>同一仓库把 Q4_K_M &#x2F; Q3 &#x2F; IQ3_XXS &#x2F; IQ2 &#x2F; IQ1_S 全档配齐</strong>，还带视觉投影（mmproj）与 MTP 融合版，方便一次横评。</p>
+<p>两个必须搞清楚的概念：</p>
+<ul>
+<li><strong>视觉与量化解耦</strong>：GGUF 只含文本权重，”看图”靠独立视觉投影（mmproj，约 600MB）。同一份 mmproj 配任何量化档都能看图——差别只在”看得清不清楚”。</li>
+<li><strong>MTP 头是独立零件</strong>：普通 GGUF 把 MTP 子模型剥掉了。要用 MTP 投机解码得下 <strong>MTP 焊在里面的融合版</strong>（文件名带 <code>-mtp</code>）；外挂独立模块当前 llama.cpp 不支持。</li>
+</ul>
+<h3 id="⚖️-全家桶横评（官方-Q4-3bit-1bit-MTP）"><a href="#⚖️-全家桶横评（官方-Q4-3bit-1bit-MTP）" class="headerlink" title="⚖️ 全家桶横评（官方 &#x2F; Q4 &#x2F; 3bit &#x2F; 1bit &#x2F; MTP）"></a>⚖️ 全家桶横评（官方 &#x2F; Q4 &#x2F; 3bit &#x2F; 1bit &#x2F; MTP）</h3><p>同题短文（”一只猫决定去海边旅行”200 字）+ 计数测速，五模型轮番上阵：</p>
+<table>
+<thead>
+<tr>
+<th>模型</th>
+<th>体积</th>
+<th>速度</th>
+<th>同题短文质量</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>官方版 Q4_K_M</td>
+<td>17.7GB</td>
+<td>1.64 字&#x2F;秒</td>
+<td>好，但有审查</td>
+</tr>
+<tr>
+<td>Heretic Q4_K_M</td>
+<td>16.55GB</td>
+<td>1.85 字&#x2F;秒</td>
+<td><strong>好，无审查，可看图</strong></td>
+</tr>
+<tr>
+<td>Heretic IQ3_XXS（3bit）</td>
+<td>11.19GB</td>
+<td>2.26 字&#x2F;秒</td>
+<td>不错，与 Q4 差距很小</td>
+</tr>
+<tr>
+<td>Heretic IQ1_S（1bit）</td>
+<td>7.15GB</td>
+<td><strong>5.01 字&#x2F;秒</strong></td>
+<td>明显劣化：干瘪浅白</td>
+</tr>
+<tr>
+<td>Heretic IQ3_XXS + MTP</td>
+<td>11.64GB</td>
+<td>2.28 字&#x2F;秒</td>
+<td>与普通 IQ3 相同</td>
+</tr>
+</tbody></table>
+<p>IQ1_S 的 5 字&#x2F;秒不是白来的——7.15GB 能塞进 8GB 显存大半。但代价肉眼可见：它写”它准备了猫粮、鱼罐头和一把小伞……不再抱怨猫粮的烦恼”；Q4 写”海浪的气味从某个缝隙钻进来，细碎的，咸的，带着一种它从未闻过的辽阔”。<strong>1bit 只适合”大概能聊”，不适合讲究文字的用途。</strong> 而 <strong>IQ3_XXS 是性价比惊喜</strong>：小 5.4GB、快 20%，质量几乎追平 Q4。</p>
+<p><strong>最终保留</strong>：主力 Heretic Q4_K_M + mmproj（质量&#x2F;视觉&#x2F;去审查的最佳平衡）；备用 Heretic IQ3_XXS + mmproj（快档）。官方版（有审查还更大）、IQ1_S（质量掉档）、MTP 融合版（实测无价值）删除，腾出 36GB。</p>
+<h3 id="⚡-MTP-实测：激活成功，但这台机器用不起"><a href="#⚡-MTP-实测：激活成功，但这台机器用不起" class="headerlink" title="⚡ MTP 实测：激活成功，但这台机器用不起"></a>⚡ MTP 实测：激活成功，但这台机器用不起</h3><p>llama.cpp 较新构建已支持 Qwen3.8（qwen35）架构的 MTP（qwen35.cpp 里 2026 年 5-6 月就合入了相关代码），启用参数 <code>--spec-type draft-mtp --spec-draft-n-max 3</code>，前提是模型含 MTP 头。启动日志出现 <code>creating MTP draft context against the target model</code> 即激活成功。</p>
+<p>MTP 原理是”一次前向多验几个字”，在带宽受限场景本该尤其有效。实测打脸：</p>
+<table>
+<thead>
+<tr>
+<th>配置</th>
+<th>计数任务</th>
+<th>中文叙述</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>无 MTP 基线</td>
+<td>2.23 字&#x2F;秒</td>
+<td>~2.2 字&#x2F;秒</td>
+</tr>
+<tr>
+<td>MTP n-max&#x3D;3</td>
+<td>2.15（更慢）</td>
+<td>1.31（明显慢）</td>
+</tr>
+<tr>
+<td>MTP n-max&#x3D;2</td>
+<td>2.38（+7%）</td>
+<td>1.62（仍慢）</td>
+</tr>
+</tbody></table>
+<p>这台机器连主模型一次前向都靠内存带宽硬扛，MTP 草稿头与验证流程的额外内存往返抵消了省下的前向次数。<strong>MTP 是显存充裕机器的 1.5~2 倍利器，在 8GB 带宽瓶颈机上是负优化。</strong></p>
+<h3 id="🛠️-删除与”假删除”坑"><a href="#🛠️-删除与”假删除”坑" class="headerlink" title="🛠️ 删除与”假删除”坑"></a>🛠️ 删除与”假删除”坑</h3><p>横评后删除 36GB 模型，<strong>文件没了，磁盘可用空间纹丝不动</strong>。排查发现是脚本环境的 <code>rm</code> 被安全包装——删除实际是<strong>移进 Windows 回收站</strong>而不是真删。回收站里躺着那三个大模型，确认无其他文件后精确清除才释放空间。</p>
+<blockquote>
+<p>💡 通用教训：在封装过的终端环境删大文件后空间没释放，先查回收站（<code>$Recycle.Bin</code>）。删大模型文件后习惯性 <code>df</code> 验证一下，无声无息的”假删除”最坑。</p>
+</blockquote>
+<h3 id="✅-最终配置速查（现役）"><a href="#✅-最终配置速查（现役）" class="headerlink" title="✅ 最终配置速查（现役）"></a>✅ 最终配置速查（现役）</h3><table>
+<thead>
+<tr>
+<th>项目</th>
+<th>内容</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>引擎</td>
+<td>llama.cpp Vulkan b10760（无需 ROCm）</td>
+</tr>
+<tr>
+<td>主力</td>
+<td>Heretic Q4_K_M（16.55GB）+ mmproj 视觉</td>
+</tr>
+<tr>
+<td>备用</td>
+<td>Heretic IQ3_XXS（11.19GB）+ mmproj 视觉</td>
+</tr>
+<tr>
+<td>启动参数</td>
+<td>不写 <code>-ngl</code> 自动分层；<code>-a</code> 起别名；<code>--mmproj</code> 挂视觉</td>
+</tr>
+<tr>
+<td>实测速度</td>
+<td>Q4 ≈ 1.9 字&#x2F;秒；IQ3 ≈ 2.3 字&#x2F;秒</td>
+</tr>
+<tr>
+<td>MTP</td>
+<td>引擎支持但本机负优化，不启用</td>
+</tr>
+</tbody></table>
+<p>两个模型共用一份 mmproj，同一时刻跑一个。API 模型名 <code>Qwen3.8-27B-Heretic-Q4_K_M</code> &#x2F; <code>Qwen3.8-27B-Heretic-IQ3_XXS</code>。</p>
+<hr>
+<h2 id="📝-写在最后"><a href="#📝-写在最后" class="headerlink" title="📝 写在最后"></a>📝 写在最后</h2><p>整个过程最大的体会：<strong>本地跑大模型，瓶颈往往不在显存，而在内存带宽</strong>；而<strong>模型的价值观对齐是出厂焊死的，本地化部署只保证”没人偷看你的对话”，不保证”它什么都肯说”</strong>。显卡能帮你一点点（7%），权重里的拒绝倾向则只能靠社区去审查版解决。</p>
+<p>如果你也是 8GB 显卡想跑 27B，记住这几句话：</p>
 <ol>
 <li><strong>别手写 <code>-ngl</code></strong>：自动拟合既省事又不会踩 WDDM 静默溢出的坑</li>
-<li><strong>1.5 字&#x2F;秒不是没调好</strong>：算一笔带宽账就明白了，别再调参</li>
-<li><strong>该换小模型就换</strong>：交互用小模型，长文批量才用 27B</li>
+<li><strong>速度上限不是没调好</strong>：算一笔带宽账就明白了，别再调参</li>
+<li><strong>限制在权重里，改提示词没用</strong>：想放开就换 abliterated &#x2F; uncensored 权重</li>
+<li><strong>1bit 不是速度神器</strong>：5 字&#x2F;秒很诱人，但文字水平掉到没法看；<strong>3bit 才是性价比甜点</strong></li>
+<li><strong>MTP 是富人的玩具</strong>：带宽瓶颈的 8GB 卡上用不起，显存自由的机器才值得开</li>
+<li><strong>删模型记得验证空间真释放了</strong>：回收站会骗你</li>
 </ol>
 <p>祝你也跑通 🎉</p>
 
@@ -568,6 +733,7 @@
               <a href="/tags/llama-cpp/" rel="tag"># llama.cpp</a>
               <a href="/tags/Vulkan/" rel="tag"># Vulkan</a>
               <a href="/tags/%E9%87%8F%E5%8C%96/" rel="tag"># 量化</a>
+              <a href="/tags/%E5%8E%BB%E5%AE%A1%E6%9F%A5/" rel="tag"># 去审查</a>
           </div>
 
         
