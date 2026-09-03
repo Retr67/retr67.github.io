@@ -27,7 +27,7 @@
 <meta property="og:description" content="8GB 显存的 AMD 显卡，能不能本地跑一个 27B 参数的大语言模型？答案是：能。这篇分两部记录全过程—— 第一部：跑通官方版。从选型、下载、踩坑到实测，结论是官方版能跑但只有约 1.5 字&#x2F;秒，且自带”限制”。第二部：去审查版与量化横评。查清”限制”藏在哪一层，换社区去审查权重，把 Q4 &#x2F; 3bit &#x2F; 1bit &#x2F; MTP 全家桶拉出来横评，最后">
 <meta property="og:locale" content="zh_CN">
 <meta property="article:published_time" content="2026-09-02T20:20:00.000Z">
-<meta property="article:modified_time" content="2026-09-03T20:16:37.475Z">
+<meta property="article:modified_time" content="2026-09-03T21:47:10.640Z">
 <meta property="article:author" content="Retr67">
 <meta property="article:tag" content="AMD">
 <meta property="article:tag" content="排错">
@@ -203,7 +203,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-09-04 04:16:37" itemprop="dateModified" datetime="2026-09-04T04:16:37+08:00">2026-09-04</time>
+      <time title="修改时间：2026-09-04 05:47:10" itemprop="dateModified" datetime="2026-09-04T05:47:10+08:00">2026-09-04</time>
     </span>
 
   
@@ -220,6 +220,9 @@
 <p><strong>第一部：跑通官方版</strong>。从选型、下载、踩坑到实测，结论是官方版能跑但只有约 1.5 字&#x2F;秒，且自带”限制”。<br><strong>第二部：去审查版与量化横评</strong>。查清”限制”藏在哪一层，换社区去审查权重，把 Q4 &#x2F; 3bit &#x2F; 1bit &#x2F; MTP 全家桶拉出来横评，最后留下两个。</p>
 <p>现役配置（去审查 Q4_K_M + 视觉）的速查表在文末「最终配置速查」，急着抄作业可以直接跳那里。</p>
 </blockquote>
+<span id="more"></span>
+
+
 <hr>
 <h2 id="🧱-第一部：跑通官方版"><a href="#🧱-第一部：跑通官方版" class="headerlink" title="🧱 第一部：跑通官方版"></a>🧱 第一部：跑通官方版</h2><blockquote>
 <p>本部路线：选型 → 下载 → 踩坑 → 实测。解决两个问题：怎么在 Windows + AMD 上装起来，以及为什么速度是 1.5 字&#x2F;秒。</p>

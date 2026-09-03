@@ -186,7 +186,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-09-04 04:16:37" itemprop="dateModified" datetime="2026-09-04T04:16:37+08:00">2026-09-04</time>
+      <time title="修改时间：2026-09-04 05:47:10" itemprop="dateModified" datetime="2026-09-04T05:47:10+08:00">2026-09-04</time>
     </span>
 
   
@@ -204,493 +204,14 @@
 <p><strong>第一部：跑通官方版</strong>。从选型、下载、踩坑到实测，结论是官方版能跑但只有约 1.5 字&#x2F;秒，且自带”限制”。<br><strong>第二部：去审查版与量化横评</strong>。查清”限制”藏在哪一层，换社区去审查权重，把 Q4 &#x2F; 3bit &#x2F; 1bit &#x2F; MTP 全家桶拉出来横评，最后留下两个。</p>
 <p>现役配置（去审查 Q4_K_M + 视觉）的速查表在文末「最终配置速查」，急着抄作业可以直接跳那里。</p>
 </blockquote>
-<hr>
-<h2 id="🧱-第一部：跑通官方版"><a href="#🧱-第一部：跑通官方版" class="headerlink" title="🧱 第一部：跑通官方版"></a>🧱 第一部：跑通官方版</h2><blockquote>
-<p>本部路线：选型 → 下载 → 踩坑 → 实测。解决两个问题：怎么在 Windows + AMD 上装起来，以及为什么速度是 1.5 字&#x2F;秒。</p>
-</blockquote>
-<h3 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h3><p>Qwen3.8-27B 是 2026 年 8 月发布的 27B 稠密模型，Apache 2.0、原生多模态、256K 上下文，官方还直接出了 GGUF。听起来很适合本地部署——直到你看到体积：<strong>Q4_K_M 量化后仍有 17.7GB</strong>。</p>
-<p>而我手里只有一张 <strong>AMD RX 6650 XT（8GB 显存）</strong>，在 Windows 上还吃不到 ROCm。这条路上我踩了三个坑（下载断线、Git Bash curl 写文件报错、速度莫名只有 1 字&#x2F;秒），最后靠 <strong>llama.cpp Vulkan 版 + 自动分层</strong>跑通，并做了一组五轮对照实测来回答那个最折磨人的问题：<strong>到底是我没调好，还是这台机器就只能这么快？</strong></p>
-<h3 id="🎯-最终方案（第一部时点）"><a href="#🎯-最终方案（第一部时点）" class="headerlink" title="🎯 最终方案（第一部时点）"></a>🎯 最终方案（第一部时点）</h3><table>
-<thead>
-<tr>
-<th>项目</th>
-<th>方案</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>运行框架</td>
-<td>llama.cpp Vulkan 预编译版（b10760）</td>
-</tr>
-<tr>
-<td>模型形态</td>
-<td><strong>Qwen3.8-27B Q4_K_M GGUF</strong>（17.7GB）</td>
-</tr>
-<tr>
-<td>GPU 方案</td>
-<td><strong>Vulkan 后端</strong>（无需 ROCm）</td>
-</tr>
-<tr>
-<td>显存分配</td>
-<td><strong>自动分层</strong>（不写 <code>-ngl</code>，按空闲显存自动拟合）</td>
-</tr>
-<tr>
-<td>实测速度</td>
-<td><strong>生成 1.5~1.6 字&#x2F;秒</strong>，读入 5~6 字&#x2F;秒</td>
-</tr>
-</tbody></table>
-<p><strong>核心逻辑</strong>：模型远大于显存，绝大多数层只能走内存。既然如此，就不要手动指定塞几层进显卡——交给 llama.cpp 自动拟合，既不会超售，也不用反复试参数。</p>
-<h3 id="🧱-方案选型：为什么是-Q4-K-M-Vulkan"><a href="#🧱-方案选型：为什么是-Q4-K-M-Vulkan" class="headerlink" title="🧱 方案选型：为什么是 Q4_K_M + Vulkan"></a>🧱 方案选型：为什么是 Q4_K_M + Vulkan</h3><p><strong>为什么选 Qwen3.8-27B：</strong></p>
-<table>
-<thead>
-<tr>
-<th>特性</th>
-<th>对本地部署的意义</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>混合注意力：48 层 Gated DeltaNet（线性）+ 16 层 Gated Attention</td>
-<td>KV 缓存省约 75%，16K 上下文几乎不占显存</td>
-</tr>
-<tr>
-<td>原生多模态</td>
-<td>不用外挂 CLIP 也能走图文</td>
-</tr>
-<tr>
-<td>256K 上下文</td>
-<td>理论上能吃长文档（但本机读入速度下不实用，见本部实测）</td>
-</tr>
-<tr>
-<td>Apache 2.0</td>
-<td>商用无顾虑</td>
-</tr>
-<tr>
-<td>官方出 GGUF（ggml-org 仓库）</td>
-<td>不用自己转换权重，开箱即用</td>
-</tr>
-</tbody></table>
-<p><strong>量化档位：8GB 卡只有 Q4 这一个活口：</strong></p>
-<table>
-<thead>
-<tr>
-<th>量化</th>
-<th>体积</th>
-<th>8GB 卡可行性</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>BF16 &#x2F; FP8</td>
-<td>55GB+</td>
-<td>❌ 想都别想</td>
-</tr>
-<tr>
-<td>Q8_0</td>
-<td>~30GB</td>
-<td>❌</td>
-</tr>
-<tr>
-<td><strong>Q4_K_M</strong></td>
-<td><strong>17.7GB</strong></td>
-<td>✅ 能跑（大部分在内存）</td>
-</tr>
-<tr>
-<td>IQ4_XS &#x2F; Q3_K_XL</td>
-<td>13~14GB</td>
-<td>⚠️ 能跑，但提速有限</td>
-</tr>
-</tbody></table>
-<blockquote>
-<p>💡 <strong>同系列没有”轻量款”</strong>：<code>Qwen3.8-Flash-Next</code> 听着像小的，实际是 180GB 的巨型 MoE（Q4_K_XL 分片加起来 111GB），比 27B 还难跑。别被名字骗了。</p>
-</blockquote>
-<p><strong>推理后端：Vulkan 是 Windows + AMD 的最优解：</strong></p>
-<table>
-<thead>
-<tr>
-<th>路线</th>
-<th>现状</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>ROCm &#x2F; HIP 编译版</td>
-<td>Windows 上官方支持长期缺位，编译折磨</td>
-</tr>
-<tr>
-<td><strong>Vulkan 预编译版</strong></td>
-<td><strong>下载解压即用</strong> ✅</td>
-</tr>
-<tr>
-<td>纯 CPU</td>
-<td>最稳，但没有硬件加速</td>
-</tr>
-</tbody></table>
-<p>验证命令：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">llama-server.exe --list-devices</span><br><span class="line"><span class="comment"># Vulkan0: AMD Radeon RX 6650 XT (8176 MiB)</span></span><br></pre></td></tr></table></figure>
-
-<p>看到显卡型号的那一刻基本就成了。</p>
-<h3 id="📦-文件清单（第一部时点）"><a href="#📦-文件清单（第一部时点）" class="headerlink" title="📦 文件清单（第一部时点）"></a>📦 文件清单（第一部时点）</h3><table>
-<thead>
-<tr>
-<th>文件</th>
-<th>位置</th>
-<th>大小</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><code>Qwen3.8-27B-Q4_K_M.gguf</code></td>
-<td><code>models/</code></td>
-<td>17.7GB</td>
-<td>主模型（ggml-org 仓库，hf-mirror 下载）</td>
-</tr>
-<tr>
-<td><code>llama-server.exe</code> 等</td>
-<td><code>llama.cpp/</code></td>
-<td>约 200MB</td>
-<td>Vulkan 预编译包</td>
-</tr>
-<tr>
-<td><code>python_resume_download.py</code></td>
-<td><code>models/</code></td>
-<td>—</td>
-<td>断点续传下载器（本文最可复用的一段）</td>
-</tr>
-</tbody></table>
-<p><strong>启动参数</strong>（写成 bat 一键启动）：</p>
-<figure class="highlight bat"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line">llama-server.exe ^</span><br><span class="line">  -m &quot;models\Qwen3.<span class="number">8</span>-<span class="number">27</span>B-Q4_K_M.gguf&quot; ^</span><br><span class="line">  -a &quot;Qwen3.<span class="number">8</span>-<span class="number">27</span>B&quot; ^</span><br><span class="line">  --ctx-size <span class="number">16384</span> ^</span><br><span class="line">  --flash-attn on ^</span><br><span class="line">  --jinja ^</span><br><span class="line">  --chat-template-kwargs &quot;&#123;\&quot;reasoning_effort\&quot;: \&quot;medium\&quot;&#125;&quot; ^</span><br><span class="line">  --host <span class="number">127</span>.<span class="number">0</span>.<span class="number">0</span>.<span class="number">1</span></span><br></pre></td></tr></table></figure>
-
-<ul>
-<li><code>-a</code> 是模型别名。不加的话 API 和客户端里显示的是一长串文件路径，加上就是干净的 <code>Qwen3.8-27B</code>。</li>
-<li><strong>故意不写 <code>-ngl</code></strong>，让 llama.cpp 自动按空闲显存分层——这是本文最重要的一个配置决定，原因见下面 1 字&#x2F;秒那节。</li>
-</ul>
-<h3 id="📥-下载关：17-7GB-怎么不断线"><a href="#📥-下载关：17-7GB-怎么不断线" class="headerlink" title="📥 下载关：17.7GB 怎么不断线"></a>📥 下载关：17.7GB 怎么不断线</h3><p>这一关花的时间比装模型还多，三个拦路虎：</p>
-<p><strong>拦路虎一：GitHub 下不动 → 换镜像。</strong> Release 包直连失败（<code>schannel</code> 报错），改用 GitHub 加速镜像即可：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">curl -L -C - -o llama.zip <span class="string">&quot;https://ghfast.top/https://github.com/ggml-org/llama.cpp/releases/download/b10760/llama-b10760-bin-win-vulkan-x64.zip&quot;</span></span><br><span class="line"><span class="comment"># 备选：https://gh-proxy.com/https://github.com/...</span></span><br></pre></td></tr></table></figure>
-
-<p><strong>拦路虎二：hf-mirror 长连接被掐断。</strong> 模型源站连不上，走镜像站。但<strong>大文件下载到几百 MB 就会被掐断</strong>（连接被对端关闭），必须断点续传 + 失败重试。先拿到真实文件大小，免得传完了不知道：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">curl -s <span class="string">&quot;https://hf-mirror.com/api/models/ggml-org/Qwen3.8-27B-GGUF/tree/main&quot;</span> | \</span><br><span class="line">  python -c <span class="string">&quot;import json,sys;[print(f[&#x27;path&#x27;], f[&#x27;size&#x27;]) for f in json.load(sys.stdin) if f[&#x27;path&#x27;].endswith(&#x27;.gguf&#x27;)]&quot;</span></span><br><span class="line"><span class="comment"># Qwen3.8-27B-Q4_K_M.gguf  18973870432   ← 记下这个数</span></span><br></pre></td></tr></table></figure>
-
-<p><strong>拦路虎三：MSYS 的 curl 写文件报错 23（真坑）。</strong> 套上续传循环后，每次都在写入时失败：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl: (23) client returned ERROR on write of 16384 bytes</span><br></pre></td></tr></table></figure>
-
-<p>排查过：磁盘空间充足（30GB+）、文件没被占用（用 Python 往同一文件写字节能成功）。结论是 <strong>Git Bash 自带 curl 在特定写入场景下的毛病</strong>，换实现比继续查快。</p>
-<p><strong>最终方案：Python urllib 断点续传脚本</strong>（改成自己的 URL&#x2F;路径&#x2F;大小就能直接用）：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> os, sys, time, urllib.request</span><br><span class="line"></span><br><span class="line">URL    = <span class="string">&quot;https://hf-mirror.com/ggml-org/Qwen3.8-27B-GGUF/resolve/main/Qwen3.8-27B-Q4_K_M.gguf&quot;</span></span><br><span class="line">PATH   = <span class="string">r&quot;D:\AI-LLM\models\Qwen3.8-27B-Q4_K_M.gguf&quot;</span></span><br><span class="line">TARGET = <span class="number">18973870432</span>          <span class="comment"># 上一步查到的真实大小</span></span><br><span class="line">CHUNK  = <span class="number">1</span> &lt;&lt; <span class="number">22</span>              <span class="comment"># 4MB</span></span><br><span class="line"></span><br><span class="line">attempt = <span class="number">0</span></span><br><span class="line"><span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">    sz = os.path.getsize(PATH)</span><br><span class="line">    <span class="keyword">if</span> sz &gt;= TARGET:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&quot;COMPLETE <span class="subst">&#123;sz&#125;</span>&quot;</span>, flush=<span class="literal">True</span>); <span class="keyword">break</span></span><br><span class="line">    attempt += <span class="number">1</span></span><br><span class="line">    <span class="built_in">print</span>(<span class="string">f&quot;attempt <span class="subst">&#123;attempt&#125;</span>: resume at <span class="subst">&#123;sz&#125;</span> (<span class="subst">&#123;<span class="number">100</span>*sz/TARGET:<span class="number">.1</span>f&#125;</span>%)&quot;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">    <span class="keyword">try</span>:</span><br><span class="line">        req = urllib.request.Request(URL, headers=&#123;<span class="string">&quot;Range&quot;</span>: <span class="string">f&quot;bytes=<span class="subst">&#123;sz&#125;</span>-&quot;</span>&#125;)</span><br><span class="line">        r = urllib.request.urlopen(req, timeout=<span class="number">60</span>)</span><br><span class="line">        code = r.getcode()</span><br><span class="line">        <span class="comment"># 服务器忽略 Range 返回 200 时，绝不写入，否则前面全白下</span></span><br><span class="line">        <span class="keyword">if</span> code == <span class="number">200</span> <span class="keyword">and</span> sz &gt; <span class="number">0</span>:</span><br><span class="line">            <span class="built_in">print</span>(<span class="string">&quot;  server ignored Range (200); abort to avoid overwrite&quot;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">            sys.exit(<span class="number">2</span>)</span><br><span class="line">        <span class="keyword">with</span> <span class="built_in">open</span>(PATH, <span class="string">&quot;ab&quot;</span>) <span class="keyword">as</span> f:</span><br><span class="line">            t0, got = time.time(), <span class="number">0</span></span><br><span class="line">            <span class="keyword">while</span> <span class="literal">True</span>:</span><br><span class="line">                chunk = r.read(CHUNK)</span><br><span class="line">                <span class="keyword">if</span> <span class="keyword">not</span> chunk: <span class="keyword">break</span></span><br><span class="line">                f.write(chunk); got += <span class="built_in">len</span>(chunk)</span><br><span class="line">                <span class="keyword">if</span> got % (<span class="number">1</span> &lt;&lt; <span class="number">26</span>) &lt; CHUNK:   <span class="comment"># 每 ~64MB 报一次</span></span><br><span class="line">                    speed = got / <span class="built_in">max</span>(time.time() - t0, <span class="number">0.1</span>) / <span class="number">1e6</span></span><br><span class="line">                    <span class="built_in">print</span>(<span class="string">f&quot;  <span class="subst">&#123;os.path.getsize(PATH)&#125;</span> (<span class="subst">&#123;<span class="number">100</span>*os.path.getsize(PATH)/TARGET:<span class="number">.1</span>f&#125;</span>%) <span class="subst">&#123;speed:<span class="number">.1</span>f&#125;</span> MB/s&quot;</span>, flush=<span class="literal">True</span>)</span><br><span class="line">    <span class="keyword">except</span> Exception <span class="keyword">as</span> e:</span><br><span class="line">        <span class="built_in">print</span>(<span class="string">f&quot;  error: <span class="subst">&#123;e&#125;</span>&quot;</span>, flush=<span class="literal">True</span>); time.sleep(<span class="number">3</span>)</span><br><span class="line">    time.sleep(<span class="number">1</span>)</span><br></pre></td></tr></table></figure>
-
-<p>两个关键点：</p>
-<ul>
-<li><strong>Range 请求 + 追加写（<code>ab</code>）</strong>：断线后用已下载字节数做偏移，从头循环。</li>
-<li><strong>拒绝 200 响应</strong>：服务器若忽略 Range 从头返回，追加写会把文件撑成两倍大的垃圾。<strong>直接退出让人处理，比静默损坏强</strong>。</li>
-</ul>
-<p>下完记得校验大小和文件头：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">with</span> <span class="built_in">open</span>(PATH, <span class="string">&quot;rb&quot;</span>) <span class="keyword">as</span> f:</span><br><span class="line">    <span class="built_in">print</span>(f.read(<span class="number">4</span>))          <span class="comment"># b&#x27;GGUF&#x27;</span></span><br><span class="line"><span class="built_in">print</span>(os.path.getsize(PATH))  <span class="comment"># 18973870432</span></span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>💡 <strong>附带一个 Windows 小坑</strong>：用 Windows 版 Python 跑脚本时，路径必须写成 <code>D:/xxx/yyy.py</code> 风格。Git Bash 的 <code>/d/xxx/yyy.py</code> 会被解析成 <code>C:\d\xxx\yyy.py</code>，然后报找不到文件。</p>
-</blockquote>
-<h3 id="🐛-第一个真坑：1-字-秒，显存超售的锅"><a href="#🐛-第一个真坑：1-字-秒，显存超售的锅" class="headerlink" title="🐛 第一个真坑：1 字&#x2F;秒，显存超售的锅"></a>🐛 第一个真坑：1 字&#x2F;秒，显存超售的锅</h3><p>模型加载正常、能出字，但速度只有 <strong>1.00 字&#x2F;秒</strong>。日志里有一行关键警告：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">W common_fit_params: failed to fit params to free device memory:</span><br><span class="line">  n_gpu_layers already set by user to 20, abort</span><br></pre></td></tr></table></figure>
-
-<p><strong>根因</strong>：我手动写死了 <code>--n-gpu-layers 20</code>，而此时显存被另一个常驻程序占着（只剩 3.2GB 可用），20 层的权重塞不下。</p>
-<p>Windows 的 WDDM 驱动模型这时候<strong>不会报 OOM</strong>，而是静默把 GPU 显存溢出到”共享 GPU 内存”——也就是走 PCIe 去系统内存搬。<strong>这比直接把层放 CPU 上还慢得多</strong>，于是掉到 1.0 字&#x2F;秒。</p>
-<blockquote>
-<p>⚠️ <strong>这个坑的阴险之处</strong>：它不报错、不崩溃，只是慢。你只会以为是”27B 本来就慢”，然后开始怀疑人生。</p>
-</blockquote>
-<p><strong>修法：别手写 <code>-ngl</code>，让 llama.cpp 自动拟合。</strong> 它启动时按当前真实空闲显存算能放几层，无论别的程序占没占显存都不会超售。</p>
-<h3 id="📊-实测：官方版-≈1-5-字-秒是带宽极限"><a href="#📊-实测：官方版-≈1-5-字-秒是带宽极限" class="headerlink" title="📊 实测：官方版 ≈1.5 字&#x2F;秒是带宽极限"></a>📊 实测：官方版 ≈1.5 字&#x2F;秒是带宽极限</h3><p>做了五组对照（每次都用全新 prompt，排除缓存干扰）：</p>
-<table>
-<thead>
-<tr>
-<th>配置</th>
-<th>生成速度</th>
-<th>读入速度</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>手动 <code>-ngl 20/22</code>（显存被占用时）</td>
-<td>1.00 字&#x2F;秒</td>
-<td>3~6 字&#x2F;秒</td>
-</tr>
-<tr>
-<td><strong>自动分层（不写 <code>-ngl</code>）</strong></td>
-<td><strong>1.59 字&#x2F;秒</strong></td>
-<td>5.6 字&#x2F;秒</td>
-</tr>
-<tr>
-<td>纯 CPU（<code>-ngl 0</code>）</td>
-<td>1.49 字&#x2F;秒</td>
-<td>4.9 字&#x2F;秒</td>
-</tr>
-<tr>
-<td>纯 CPU + 12 线程（<code>-t 12</code>）</td>
-<td>1.49 字&#x2F;秒</td>
-<td>6.2 字&#x2F;秒</td>
-</tr>
-<tr>
-<td>重启后干净环境（显存全空）</td>
-<td>1.58 字&#x2F;秒</td>
-<td>5.8 字&#x2F;秒</td>
-</tr>
-</tbody></table>
-<p>三个反直觉的结论：</p>
-<p><strong>① GPU 分层只带来 7% 提升。</strong> 按 Amdahl 定律，8GB 显存能放约 40% 的层，理论上限应该接近 1.6 倍，实际只有 1.07 倍。差额来自 Vulkan 在 RDNA2 上的 kernel 效率、跨设备提交开销，以及自动拟合本身很保守。</p>
-<p><strong>② 线程数对生成速度零影响。</strong> 12 线程只让读入快了 27%，生成纹丝不动——<strong>生成是带宽瓶颈，不是算力瓶颈</strong>。</p>
-<p><strong>③ 关掉其他程序腾出全部显存也没用。</strong> 1.58 &#x3D; 1.59，说明瓶颈根本不在显存。</p>
-<p><strong>算一笔账，验证是不是带宽。</strong> 生成一个 token 要把 17.7GB 权重完整读一遍，本机内存有效带宽约 25~30 GB&#x2F;s：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">17.7 GB ÷ 26 GB/s ≈ 0.68 秒/字  →  约 1.5 字/秒</span><br></pre></td></tr></table></figure>
-
-<p>和实测的 1.49~1.59 <strong>完全吻合</strong>。所以这个数字不是”没调好”，是内存带宽写死的。</p>
-<blockquote>
-<p>💡 注意这个极限的前提是”<strong>同体积权重</strong>“——第二部换更小的量化档后速度上浮，正是这条规律的验证。另：上下文设太大（比如 256K）对生成速度没影响（混合注意力的 KV 很小），但<strong>读入会慢到不可用</strong>——长文档先想清楚再喂。</p>
-</blockquote>
-<h3 id="💡-想更快怎么办"><a href="#💡-想更快怎么办" class="headerlink" title="💡 想更快怎么办"></a>💡 想更快怎么办</h3><p>27B 官方版在 8GB 卡上没有调参空间，出路只有两条：</p>
-<table>
-<thead>
-<tr>
-<th>路线</th>
-<th>做法</th>
-<th>预期</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>换更小的模型</td>
-<td>Qwen3-8B Q4（<del>5GB 全进显存）&#x2F; Qwen3-14B Q4（</del>9GB）</td>
-<td>15<del>25 &#x2F; 4</del>6 字&#x2F;秒，智力下降</td>
-</tr>
-<tr>
-<td><strong>换同模型的更小量化档</strong></td>
-<td>本文第二部实际走的路线：去审查 IQ3_XXS（11.19GB）</td>
-<td>2.3 字&#x2F;秒，质量几乎不降</td>
-</tr>
-</tbody></table>
-<p>一句话：<strong>交互聊天要快，要么换小模型，要么换低量化档</strong>；27B 的正确用法是”挂后台丢任务，去干别的”，不是一问一答。</p>
-<h3 id="🛠️-实用小贴士"><a href="#🛠️-实用小贴士" class="headerlink" title="🛠️ 实用小贴士"></a>🛠️ 实用小贴士</h3><ul>
-<li><strong>思考档位</strong>：Qwen3.8 默认 <code>reasoning_effort=xhigh</code>，会思考十几分钟。日常用 <code>medium</code>，急用 <code>low</code>，或者直接调 API 传参覆盖。</li>
-<li><strong>省时间</strong>：连续提问保持同一会话，prompt 缓存命中后读入快 3~5 倍（实测 45 token 命中缓存只需 1.1 秒，冷启动要 8 秒）。</li>
-<li><strong>冷启动</strong>：首次从磁盘读 17.7GB 约 1<del>2 分钟，第二次有系统缓存约 10</del>30 秒。</li>
-<li><strong>输出乱码</strong>：Vulkan 下混合注意力批处理有个已知 bug，加 <code>-ub 256</code> 或 <code>-ub 1024</code> 规避（避开默认 512）。</li>
-<li><strong>接入其他客户端</strong>：服务提供 OpenAI 兼容接口，Chatbox &#x2F; NextChat 之类填 <code>http://127.0.0.1:&lt;端口&gt;/v1</code> 即可，模型名用 <code>-a</code> 设置的别名。</li>
-<li><strong>界面语言</strong>：llama.cpp 自带网页界面是英文且打包在 exe 里改不了。可以用 <code>--path &lt;目录&gt;</code> 指定自己的静态页面来替换。</li>
-</ul>
-<h3 id="✅-排错清单（第一部问题照这里查）"><a href="#✅-排错清单（第一部问题照这里查）" class="headerlink" title="✅ 排错清单（第一部问题照这里查）"></a>✅ 排错清单（第一部问题照这里查）</h3><table>
-<thead>
-<tr>
-<th>现象</th>
-<th>原因</th>
-<th>处理</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>日志出现 <code>failed to fit params ... n_gpu_layers already set</code></td>
-<td>手写 <code>-ngl</code> 导致显存超售</td>
-<td>删掉 <code>-ngl</code>，让程序自动拟合</td>
-</tr>
-<tr>
-<td>速度 1 字&#x2F;秒</td>
-<td>同上（WDDM 共享内存溢出）</td>
-<td>同上</td>
-</tr>
-<tr>
-<td>下载中断、curl 报 error 23</td>
-<td>Git Bash curl 写入问题</td>
-<td>换 Python urllib 续传脚本</td>
-</tr>
-<tr>
-<td>服务器忽略 Range 返回 200</td>
-<td>镜像站问题</td>
-<td>脚本里 <code>sys.exit(2)</code> 拒绝写入，别硬写</td>
-</tr>
-<tr>
-<td>Windows Python 报找不到脚本文件</td>
-<td>用了 <code>/d/xxx</code> 路径</td>
-<td>改成 <code>D:/xxx</code></td>
-</tr>
-<tr>
-<td>生成慢到不可用</td>
-<td>同体积权重在 8GB 卡的物理极限</td>
-<td>换低量化档或小模型，别再调参</td>
-</tr>
-<tr>
-<td>回答前思考十几分钟</td>
-<td>默认 <code>xhigh</code> 档位</td>
-<td>设 <code>low</code> &#x2F; <code>medium</code></td>
-</tr>
-<tr>
-<td>输出乱码</td>
-<td>Vulkan 批处理 bug</td>
-<td><code>-ub 256</code> 或 <code>-ub 1024</code></td>
-</tr>
-</tbody></table>
-<blockquote>
-<p>🧱 <strong>第一部完。</strong> 官方版跑通了，但它留下两个新问题：<strong>速度还能不能榨</strong>？以及那个灵魂问题——<strong>都本地部署了，为什么还各种拒绝？</strong> 第二部逐一解决。</p>
-</blockquote>
-<hr>
-<h2 id="🔄-第二部：去审查版与-1bit→Q4-全家桶横评"><a href="#🔄-第二部：去审查版与-1bit→Q4-全家桶横评" class="headerlink" title="🔄 第二部：去审查版与 1bit→Q4 全家桶横评"></a>🔄 第二部：去审查版与 1bit→Q4 全家桶横评</h2><blockquote>
-<p>本部路线：先查清”限制”藏在哪一层 → 选社区去审查权重 → 五个模型横评（官方 &#x2F; Q4 &#x2F; 3bit &#x2F; 1bit &#x2F; MTP）→ MTP 专项实测 → 定下最终配置。</p>
-</blockquote>
-<h3 id="🔍-限制在权重层，不在配置层"><a href="#🔍-限制在权重层，不在配置层" class="headerlink" title="🔍 限制在权重层，不在配置层"></a>🔍 限制在权重层，不在配置层</h3><p>先怀疑配置：很多部署会在 system prompt 或模板里注入限制，那种情况改提示词就能解。所以我 dump 了官方 GGUF 元数据验证：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">GGUF v3  tensors=851  metadata_kv=39</span><br><span class="line">general.architecture = qwen35    ← 没有 chat_template 键</span><br><span class="line">general.name = Qwen3.8-27B       ← 没有 system prompt 键</span><br></pre></td></tr></table></figure>
-
-<p><strong>39 个键里既没有 system prompt 也没有 chat_template</strong>——llama.cpp 用的是内置模板。结论干净利落：</p>
-<blockquote>
-<p><strong>限制 100% 在权重里</strong>。拒绝倾向是训练阶段用 SFT + RLHF 直接写进参数的，GGUF 量化只压缩数字精度不改变模型学过什么。中文大厂模型的合规对齐尤其彻底，<strong>权重在哪，限制就在哪</strong>——这就是为什么改 system prompt 无效，唯一出路是换权重。</p>
-</blockquote>
-<blockquote>
-<p>💡 不是所有”拒绝”都是审查：模型真不会时会拒答、推理模型天生保守、多模态还有一层图像护栏。这些换任何版本都解决不了。</p>
-</blockquote>
-<h3 id="📥-去审查模型怎么选"><a href="#📥-去审查模型怎么选" class="headerlink" title="📥 去审查模型怎么选"></a>📥 去审查模型怎么选</h3><p>社区成品 GGUF（原模型 Apache 2.0，改版无许可问题）：</p>
-<table>
-<thead>
-<tr>
-<th>仓库</th>
-<th>量化</th>
-<th>下载量</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><code>huihui-ai/Huihui-Qwen3.8-27B-abliterated-GGUF</code></td>
-<td>Q4_K_L 等</td>
-<td>187 万</td>
-</tr>
-<tr>
-<td><code>JonathanColetti/Qwen3.8-27B-Uncensored-GGUF</code></td>
-<td>Q4_K_M 等</td>
-<td>214 万</td>
-</tr>
-<tr>
-<td><code>0bserverx/...Heretic-Abliterated-Uncensored-GGUF</code></td>
-<td>Q4_K_M ~ IQ1_S 全档</td>
-<td>121 万</td>
-</tr>
-<tr>
-<td><code>orcarouter/Qwen3.8-27B-Uncensored-GGUF</code></td>
-<td>Q4_K_M 等</td>
-<td>25 万</td>
-</tr>
-</tbody></table>
-<p>我选 <code>0bserverx</code> 的 Heretic 系——<strong>同一仓库把 Q4_K_M &#x2F; Q3 &#x2F; IQ3_XXS &#x2F; IQ2 &#x2F; IQ1_S 全档配齐</strong>，还带视觉投影（mmproj）与 MTP 融合版，方便一次横评。</p>
-<p>两个必须搞清楚的概念：</p>
-<ul>
-<li><strong>视觉与量化解耦</strong>：GGUF 只含文本权重，”看图”靠独立视觉投影（mmproj，约 600MB）。同一份 mmproj 配任何量化档都能看图——差别只在”看得清不清楚”。</li>
-<li><strong>MTP 头是独立零件</strong>：普通 GGUF 把 MTP 子模型剥掉了。要用 MTP 投机解码得下 <strong>MTP 焊在里面的融合版</strong>（文件名带 <code>-mtp</code>）；外挂独立模块当前 llama.cpp 不支持。</li>
-</ul>
-<h3 id="⚖️-全家桶横评（官方-Q4-3bit-1bit-MTP）"><a href="#⚖️-全家桶横评（官方-Q4-3bit-1bit-MTP）" class="headerlink" title="⚖️ 全家桶横评（官方 &#x2F; Q4 &#x2F; 3bit &#x2F; 1bit &#x2F; MTP）"></a>⚖️ 全家桶横评（官方 &#x2F; Q4 &#x2F; 3bit &#x2F; 1bit &#x2F; MTP）</h3><p>同题短文（”一只猫决定去海边旅行”200 字）+ 计数测速，五模型轮番上阵：</p>
-<table>
-<thead>
-<tr>
-<th>模型</th>
-<th>体积</th>
-<th>速度</th>
-<th>同题短文质量</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>官方版 Q4_K_M</td>
-<td>17.7GB</td>
-<td>1.64 字&#x2F;秒</td>
-<td>好，但有审查</td>
-</tr>
-<tr>
-<td>Heretic Q4_K_M</td>
-<td>16.55GB</td>
-<td>1.85 字&#x2F;秒</td>
-<td><strong>好，无审查，可看图</strong></td>
-</tr>
-<tr>
-<td>Heretic IQ3_XXS（3bit）</td>
-<td>11.19GB</td>
-<td>2.26 字&#x2F;秒</td>
-<td>不错，与 Q4 差距很小</td>
-</tr>
-<tr>
-<td>Heretic IQ1_S（1bit）</td>
-<td>7.15GB</td>
-<td><strong>5.01 字&#x2F;秒</strong></td>
-<td>明显劣化：干瘪浅白</td>
-</tr>
-<tr>
-<td>Heretic IQ3_XXS + MTP</td>
-<td>11.64GB</td>
-<td>2.28 字&#x2F;秒</td>
-<td>与普通 IQ3 相同</td>
-</tr>
-</tbody></table>
-<p>IQ1_S 的 5 字&#x2F;秒不是白来的——7.15GB 能塞进 8GB 显存大半。但代价肉眼可见，同题短文它写”它准备了猫粮、鱼罐头和一把小伞……不再抱怨猫粮的烦恼”；Q4 写”海浪的气味从某个缝隙钻进来，细碎的，咸的，带着一种它从未闻过的辽阔”。<strong>1bit 只适合”大概能聊”，不适合讲究文字的用途。</strong> 而 <strong>IQ3_XXS 是性价比惊喜</strong>：小 5.4GB、快 20%，质量几乎追平 Q4。</p>
-<p><strong>横评结论</strong>：主力 Heretic Q4_K_M + mmproj（质量&#x2F;视觉&#x2F;去审查的最佳平衡）；备用 Heretic IQ3_XXS + mmproj（快档）。官方版（有审查还更大）、IQ1_S（质量掉档）、MTP 融合版（见下节，实测无价值）删除，腾出 36GB。</p>
-<h3 id="⚡-MTP-实测：激活成功，但这台机器用不起"><a href="#⚡-MTP-实测：激活成功，但这台机器用不起" class="headerlink" title="⚡ MTP 实测：激活成功，但这台机器用不起"></a>⚡ MTP 实测：激活成功，但这台机器用不起</h3><p>llama.cpp 较新构建已支持 Qwen3.8（qwen35）架构的 MTP（qwen35.cpp 里 2026 年 5-6 月就合入了相关代码）。启用参数 <code>--spec-type draft-mtp --spec-draft-n-max 3</code>，前提是模型含 MTP 头；启动日志出现 <code>creating MTP draft context against the target model</code> 即激活成功。</p>
-<p>MTP 原理是”一次前向多验几个字”——按理说在带宽受限场景尤其该有效。实测打脸：</p>
-<table>
-<thead>
-<tr>
-<th>配置</th>
-<th>计数任务</th>
-<th>中文叙述</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>无 MTP 基线</td>
-<td>2.23 字&#x2F;秒</td>
-<td>~2.2 字&#x2F;秒</td>
-</tr>
-<tr>
-<td>MTP n-max&#x3D;3</td>
-<td>2.15（更慢）</td>
-<td>1.31（明显慢）</td>
-</tr>
-<tr>
-<td>MTP n-max&#x3D;2</td>
-<td>2.38（+7%）</td>
-<td>1.62（仍慢）</td>
-</tr>
-</tbody></table>
-<p>原因：这台机器连主模型一次前向都靠内存带宽硬扛，MTP 草稿头与验证流程的额外内存往返，抵消了省下的前向次数。<strong>MTP 是显存充裕机器的 1.5~2 倍利器，在 8GB 带宽瓶颈机上是负优化。</strong></p>
-<h3 id="🛠️-删除与”假删除”坑"><a href="#🛠️-删除与”假删除”坑" class="headerlink" title="🛠️ 删除与”假删除”坑"></a>🛠️ 删除与”假删除”坑</h3><p>横评后删除 36GB 模型，<strong>文件没了，磁盘可用空间纹丝不动</strong>。排查发现是脚本环境的 <code>rm</code> 被安全包装——删除实际是<strong>移进 Windows 回收站</strong>而不是真删。回收站里躺着那三个大模型，确认无其他文件后精确清除才释放空间。</p>
-<blockquote>
-<p>💡 通用教训：在封装过的终端环境删大文件后空间没释放，先查回收站（<code>$Recycle.Bin</code>）。删大模型文件后习惯性 <code>df</code> 验证一下，无声无息的”假删除”最坑。</p>
-</blockquote>
-<h3 id="✅-最终配置速查（现役）"><a href="#✅-最终配置速查（现役）" class="headerlink" title="✅ 最终配置速查（现役）"></a>✅ 最终配置速查（现役）</h3><table>
-<thead>
-<tr>
-<th>项目</th>
-<th>内容</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>引擎</td>
-<td>llama.cpp Vulkan b10760（无需 ROCm）</td>
-</tr>
-<tr>
-<td>主力</td>
-<td>Heretic Q4_K_M（16.55GB）+ mmproj 视觉</td>
-</tr>
-<tr>
-<td>备用</td>
-<td>Heretic IQ3_XXS（11.19GB）+ mmproj 视觉</td>
-</tr>
-<tr>
-<td>实测速度</td>
-<td>Q4 ≈ 1.9 字&#x2F;秒；IQ3 ≈ 2.3 字&#x2F;秒</td>
-</tr>
-<tr>
-<td>MTP</td>
-<td>引擎支持但本机负优化，不启用</td>
-</tr>
-</tbody></table>
-<p>启动参数（主力，写成 bat 一键启动）：</p>
-<figure class="highlight bat"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line">llama-server.exe ^</span><br><span class="line">  -m &quot;models\Qwen3.<span class="number">8</span>-<span class="number">27</span>B-Heretic-Q4_K_M.gguf&quot; ^</span><br><span class="line">  --mmproj &quot;models\mmproj-Qwen3.<span class="number">8</span>-<span class="number">27</span>B-Q8_0.gguf&quot; ^</span><br><span class="line">  -a &quot;Qwen3.<span class="number">8</span>-<span class="number">27</span>B-Heretic-Q4_K_M&quot; ^</span><br><span class="line">  --ctx-size <span class="number">16384</span> ^</span><br><span class="line">  --flash-attn on ^</span><br><span class="line">  --jinja ^</span><br><span class="line">  --chat-template-kwargs &quot;&#123;\&quot;reasoning_effort\&quot;: \&quot;medium\&quot;&#125;&quot; ^</span><br><span class="line">  --host <span class="number">127</span>.<span class="number">0</span>.<span class="number">0</span>.<span class="number">1</span></span><br></pre></td></tr></table></figure>
-
-<p>两个模型共用一份 mmproj，同一时刻跑一个。API 模型名 <code>Qwen3.8-27B-Heretic-Q4_K_M</code> &#x2F; <code>Qwen3.8-27B-Heretic-IQ3_XXS</code>。</p>
-<hr>
-<h2 id="📝-写在最后"><a href="#📝-写在最后" class="headerlink" title="📝 写在最后"></a>📝 写在最后</h2><p>整个过程最大的体会：<strong>本地跑大模型，瓶颈往往不在显存，而在内存带宽</strong>——自动分层、加线程、腾空显存全试过，GPU 分层也只带来 7% 的提升，每秒能从内存喂出多少 GB 才是天花板；而<strong>模型的价值观对齐是出厂焊死的</strong>，本地化部署只保证”没人偷看你的对话”，不保证”它什么都肯说”——想放开，唯一出路是换社区去审查权重。</p>
-<p>如果你也是 8GB 显卡想跑 27B，记住这几句话：</p>
-<ol>
-<li><strong>别手写 <code>-ngl</code></strong>：自动拟合既省事又不会踩 WDDM 静默溢出的坑</li>
-<li><strong>速度上限不是没调好</strong>：算一笔带宽账就明白了，别再调参</li>
-<li><strong>限制在权重里，改提示词没用</strong>：想放开就换 abliterated &#x2F; uncensored 权重</li>
-<li><strong>1bit 不是速度神器</strong>：5 字&#x2F;秒很诱人，但文字水平掉到没法看；<strong>3bit 才是性价比甜点</strong></li>
-<li><strong>MTP 是富人的玩具</strong>：带宽瓶颈的 8GB 卡上用不起，显存自由的机器才值得开</li>
-<li><strong>删模型记得验证空间真释放了</strong>：回收站会骗你</li>
-</ol>
-<p>祝你也跑通 🎉</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/09/03/%E5%8D%9A%E5%AE%A2-8GB%E6%98%BE%E5%8D%A1%E6%9C%AC%E5%9C%B0%E8%B7%91%E9%80%9A%E5%8D%83%E9%97%AE3.8-27B-llama.cpp-Vulkan%E8%B8%A9%E5%9D%91%E4%B8%8E%E5%AE%9E%E6%B5%8B/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -752,7 +273,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-09-03 04:17:43" itemprop="dateModified" datetime="2026-09-03T04:17:43+08:00">2026-09-03</time>
+      <time title="修改时间：2026-09-04 05:47:09" itemprop="dateModified" datetime="2026-09-04T05:47:09+08:00">2026-09-04</time>
     </span>
 
   
@@ -768,455 +289,14 @@
           <h1 id="AMD-显卡跑通-MiniMax-H3-视频全家桶：ZLUDA-GGUF-Q4-K-完整实录"><a href="#AMD-显卡跑通-MiniMax-H3-视频全家桶：ZLUDA-GGUF-Q4-K-完整实录" class="headerlink" title="AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录"></a>AMD 显卡跑通 MiniMax-H3 视频全家桶：ZLUDA + GGUF Q4_K 完整实录</h1><blockquote>
 <p>8GB 显存的 AMD 显卡，能不能跑一个原始体积 41GB 的文生视频&#x2F;图生视频&#x2F;音视频联合生成模型？<br>答案是：能，而且我已经跑通了。这篇记录我踩过的每一个坑。</p>
 </blockquote>
-<hr>
-<h2 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h2><p>MiniMax-H3 是支持文本生成视频（t2va）、参考图生成视频（ref2va）、首帧生成视频（fl2va）三合一的音视频联合生成模型，权重高达 41GB。正常来说这是 24GB 显存显卡的玩具。</p>
-<p>但我手里只有一张 <strong>AMD RX 6650 XT（8GB 显存）</strong>，还吃不到 CUDA 生态——只能靠 ZLUDA 翻译层把 CUDA 调用翻译成 AMD 的 HIP。整个过程中我换了两次技术方案、打了 9 个补丁、排了 14 轮错，最终用 <strong>GGUF Q4_K 量化</strong>把模型压到 10.6GB，成功跑进采样循环。</p>
-<p>这篇文章是完整的操作记录和排错路线图，希望能帮你少走弯路。</p>
-<hr>
-<h2 id="🎯-最终方案"><a href="#🎯-最终方案" class="headerlink" title="🎯 最终方案"></a>🎯 最终方案</h2><table>
-<thead>
-<tr>
-<th>项目</th>
-<th>方案</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>运行框架</td>
-<td>ComfyUI 0.33.0</td>
-</tr>
-<tr>
-<td>GPU 方案</td>
-<td>ZLUDA 翻译层（CUDA → HIP）</td>
-</tr>
-<tr>
-<td>模型形态</td>
-<td><strong>GGUF Q4_K 量化</strong>（10.63GB，原模型一半体积）</td>
-</tr>
-<tr>
-<td>编码器</td>
-<td>Qwen3-VL 32B（nvfp4，强制 CPU 加载）</td>
-</tr>
-<tr>
-<td>显存占用</td>
-<td>主模型 6GB 进 GPU + 5.2GB 低显存逐层 offload</td>
-</tr>
-</tbody></table>
-<p><strong>核心逻辑</strong>：Q4_K 权重只有 int8 版的一半，主模型能塞进 8GB 显存，配合 lowvram 模式逐层搬运，就能完整跑起来。</p>
-<hr>
-<h2 id="🧱-方案选型：为什么抛弃-int8-转投-GGUF"><a href="#🧱-方案选型：为什么抛弃-int8-转投-GGUF" class="headerlink" title="🧱 方案选型：为什么抛弃 int8 转投 GGUF"></a>🧱 方案选型：为什么抛弃 int8 转投 GGUF</h2><p>第一版方案用 int8 量化版（20.97GB），forward 时显存峰值 10.6GB，<strong>超过 8GB 物理显存，必死</strong>。</p>
-<table>
-<thead>
-<tr>
-<th>方案</th>
-<th>模型大小</th>
-<th>显存峰值</th>
-<th>结果</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>int8 safetensors</td>
-<td>20.97GB</td>
-<td>10.6GB &gt; 8GB</td>
-<td>❌ forward 即 OOM</td>
-</tr>
-<tr>
-<td><strong>GGUF Q4_K</strong></td>
-<td>10.63GB</td>
-<td>~6GB + offload</td>
-<td>✅ 有余量</td>
-</tr>
-</tbody></table>
-<blockquote>
-<p>💡 结论：8GB 显存想跑大视频模型，<strong>量化率必须到 Q4 级别</strong>，int8 只是减半，不够。</p>
-</blockquote>
-<hr>
-<h2 id="📦-模型与文件清单"><a href="#📦-模型与文件清单" class="headerlink" title="📦 模型与文件清单"></a>📦 模型与文件清单</h2><table>
-<thead>
-<tr>
-<th>文件</th>
-<th>位置</th>
-<th>大小</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><code>minimax_h3_fl2va_pruned-Q4_K.gguf</code></td>
-<td><code>models/diffusion_models/</code></td>
-<td>10.63GB</td>
-<td>主模型（unsloth 出品，HuggingFace 下载）</td>
-</tr>
-<tr>
-<td><code>qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors</code></td>
-<td><code>models/text_encoders/</code>（<strong>强制 CPU 加载</strong>，nvfp4 张量无法 <code>.to(cuda)</code>）</td>
-<td>15.7GB</td>
-<td>文本编码器</td>
-</tr>
-<tr>
-<td><code>minimax_h3_video_vae_fp16.safetensors</code></td>
-<td><code>models/vae/</code></td>
-<td>5.2GB</td>
-<td>视频 VAE（解画面）</td>
-</tr>
-<tr>
-<td><code>minimax_h3_audio_vae_fp32.safetensors</code></td>
-<td><code>models/vae/</code></td>
-<td>577MB</td>
-<td><strong>音频 VAE（解声音，别漏）</strong></td>
-</tr>
-<tr>
-<td><code>minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors</code></td>
-<td><code>models/loras/</code></td>
-<td>1.87GB</td>
-<td>4 步 turbo LoRA</td>
-</tr>
-</tbody></table>
-<p><strong>启动参数</strong>：<code>--auto-launch --dont-upcast-attention --preview-method auto --use-quad-cross-attention</code></p>
-<p><strong>工作流</strong>：<code>minimax-h3-t2va-gguf-av-turbo4.json</code>（带音频 + 4 步加速，cfg 已默认 1.0）；图生视频另有 <code>minimax-h3-i2v-turbo4.json</code>（首帧驱动）与 <code>minimax-h3-ref2va-turbo4.json</code>（参考图模式）</p>
-<p><strong>最小验证参数</strong>：<code>416×256×22 帧 × 4 步 × cfg 1</code>，跑通后再放大。</p>
-<p><strong>下载技巧</strong>：HuggingFace 直连在国内基本不可用，换 <strong>hf-mirror.com 镜像</strong>（实测速度 35MB&#x2F;s）。下载完务必确认文件大小与仓库标注一致，不要留 <code>.part</code> 残留。</p>
-<hr>
-<h2 id="🔧-前置补丁：让-ComfyUI-在-ZLUDA-上活下来"><a href="#🔧-前置补丁：让-ComfyUI-在-ZLUDA-上活下来" class="headerlink" title="🔧 前置补丁：让 ComfyUI 在 ZLUDA 上活下来"></a>🔧 前置补丁：让 ComfyUI 在 ZLUDA 上活下来</h2><p>ZLUDA 环境下有 5 个补丁是<strong>缺一不可</strong>的，不补的话报错会随机出现在任何地方（因为 CUDA 上下文从启动起就坏了）。</p>
-<table>
-<thead>
-<tr>
-<th>#</th>
-<th>补丁位置</th>
-<th>内容</th>
-<th>解决什么</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>1</td>
-<td><code>comfy/cuda_malloc.py</code></td>
-<td><code>cuda_malloc_supported()</code> 检测到 AMD&#x2F;Radeon&#x2F;gfx 直接返回 False</td>
-<td><strong>最核心</strong>：ZLUDA 下 cudaMallocAsync 分配器直接崩溃，强制改回 native 分配器</td>
-</tr>
-<tr>
-<td>2</td>
-<td><code>main.py</code> 开头</td>
-<td>注入 <code>PYTORCH_CUDA_ALLOC_CONF=backend:native</code> + <code>CUDA_LAUNCH_BLOCKING=1</code></td>
-<td>双保险</td>
-</tr>
-<tr>
-<td>3</td>
-<td><code>comfy/ops.py</code></td>
-<td>AMD 下把 int8 相关算子加入禁用列表</td>
-<td>量化走 emulated 降级路径</td>
-</tr>
-<tr>
-<td>4</td>
-<td><code>comfy_kitchen/tensor/base.py</code></td>
-<td>压制 <code>get_cuda_capability()</code> 返回 (0,0)；量化权重搬 GPU 前先 CPU 反量化</td>
-<td>见下</td>
-</tr>
-<tr>
-<td>5</td>
-<td><code>comfy/samplers.py</code></td>
-<td>count_nonzero 对 NestedTensor 的降级</td>
-<td>采样链路打通</td>
-</tr>
-</tbody></table>
-<h3 id="⚠️-最大的认知坑：ZLUDA-伪造算力"><a href="#⚠️-最大的认知坑：ZLUDA-伪造算力" class="headerlink" title="⚠️ 最大的认知坑：ZLUDA 伪造算力"></a>⚠️ 最大的认知坑：ZLUDA 伪造算力</h3><p>ZLUDA 会让 <code>torch.cuda.get_device_capability()</code> 返回 <strong>(8, 8)</strong>——假装自己是 RTX 40 系！这导致 PyTorch 启用所有原生 CUDA kernel，而实际后端是 HIP，全部崩溃。</p>
-<p><strong>必须主动压制算力检测</strong>，强制所有”是否支持快速算子”的判断走降级路径。这是前几轮所有诡异报错的共同根源。</p>
-<hr>
-<h2 id="🐛-GGUF-专属巨坑：BF16-反序列化（本文最值钱的部分）"><a href="#🐛-GGUF-专属巨坑：BF16-反序列化（本文最值钱的部分）" class="headerlink" title="🐛 GGUF 专属巨坑：BF16 反序列化（本文最值钱的部分）"></a>🐛 GGUF 专属巨坑：BF16 反序列化（本文最值钱的部分）</h2><p><strong>症状</strong>（采样第 1 步必现）：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">NoCapableBackendError: rms_rope_split_half_:</span><br><span class="line">eager: q_scale: dtype torch.uint8 not in &#123;bfloat16, float32, float16&#125;</span><br></pre></td></tr></table></figure>
-
-<p><strong>排查过程</strong>：</p>
-<ol>
-<li>报错在 Attention 的”融合 RMSNorm + RoPE”算子，参数 <code>q_scale</code> 是 RMSNorm 权重</li>
-<li>查 GGUF 文件头：<code>q_norm.weight</code> 在 GGUF 里明明是 <strong>BF16</strong> 类型</li>
-<li>为什么运行时变成 uint8？→ 打开 GGUF 加载器源码，真相大白</li>
-</ol>
-<p><strong>根因</strong>：GGUF 文件里 BF16 张量按 <strong>2 字节 uint16 小端</strong>存储，而 numpy 没有 bfloat16 类型，所以 GGUFReader 把它暴露为 <strong>uint8 原始字节</strong>。加载器只对 F32&#x2F;F16 做了 reshape，<strong>漏掉了 BF16 分支</strong>——于是全模型 212 个 BF16 张量（RMSNorm 权重等）以 uint8 裸字节喂给了模型。</p>
-<p><strong>修复</strong>（加载器内加一个分支）：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> tensor.tensor_type == BF16:</span><br><span class="line">    torch_tensor = torch_tensor.view(torch.uint16).view(torch.bfloat16).view(*shape)</span><br><span class="line"><span class="keyword">elif</span> tensor.tensor_type <span class="keyword">in</span> &#123;F32, F16&#125;:</span><br><span class="line">    torch_tensor = torch_tensor.view(*shape)</span><br></pre></td></tr></table></figure>
-
-<p><strong>验证</strong>：修复后 <code>q_norm.weight</code> 应为 bfloat16、形状正确、数值均值≈1（RMSNorm 权重特性）。</p>
-<blockquote>
-<p>💡 这是所有含 BF16 张量的 GGUF 的<strong>通用 bug</strong>，不是 MiniMax 专属。如果你的 GGUF 加载后各种 dtype 报错，先检查这一处。</p>
-</blockquote>
-<hr>
-<h2 id="🧩-工作流搭建：魔改版节点的坑"><a href="#🧩-工作流搭建：魔改版节点的坑" class="headerlink" title="🧩 工作流搭建：魔改版节点的坑"></a>🧩 工作流搭建：魔改版节点的坑</h2><p>运行时报”缺失节点包”，但节点明明装了——排查后发现：</p>
-<ul>
-<li>第三方整合包预装的 ComfyUI-GGUF 是<strong>魔改版</strong>，节点名是 <code>LoaderGGUF</code>、输入字段叫 <code>gguf_name</code></li>
-<li>官方版本（city96）的节点名是 <code>UnetLoaderGGUF</code>、字段 <code>unet_name</code></li>
-<li><strong>工作流引用官方节点名 → 前端报缺失</strong></li>
-</ul>
-<p><strong>教训</strong>：报”缺失节点包”先查运行中实例的 <code>/object_info</code> 接口，看<strong>实际注册的类名</strong>，再决定是改工作流还是装包，别急着装 Node Manager。</p>
-<p><strong>完整工作流关键节点</strong>：</p>
-<table>
-<thead>
-<tr>
-<th>节点</th>
-<th>配置</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><code>LoaderGGUF</code></td>
-<td><code>gguf_name = minimax_h3_fl2va_pruned-Q4_K.gguf</code></td>
-</tr>
-<tr>
-<td><code>CLIPLoader</code></td>
-<td>编码器 nvfp4，<strong>device 强制 cpu</strong>（nvfp4 张量无法搬到 CUDA）</td>
-</tr>
-<tr>
-<td><code>VAELoader</code></td>
-<td>视频 VAE fp16</td>
-</tr>
-<tr>
-<td><code>MiniMaxH3SigmaShift</code></td>
-<td><strong>必需节点</strong>（AV 采样器），基础版 shift_video&#x3D;12 &#x2F; shift_audio&#x3D;3；配 768p turbo LoRA 改为 <strong>6 &#x2F; 3</strong></td>
-</tr>
-<tr>
-<td><code>KSampler</code></td>
-<td>最小验证参数：416×256×22帧 × <strong>4 步 × cfg 1</strong>（配 turbo LoRA）；不配 LoRA 时 10 步 × cfg 5</td>
-</tr>
-</tbody></table>
-<hr>
-<h2 id="🗺️-排错路线图（判断补丁是否生效的标尺）"><a href="#🗺️-排错路线图（判断补丁是否生效的标尺）" class="headerlink" title="🗺️ 排错路线图（判断补丁是否生效的标尺）"></a>🗺️ 排错路线图（判断补丁是否生效的标尺）</h2><p>14 轮排错中，报错不是随机的——它按固定轨迹演进，每前进一格说明前面的补丁生效了：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line">operation not supported              ← CUDA 上下文已坏（最早期，补丁 1-4 前）</span><br><span class="line">shared object initialization failed  ← 物理内存枯竭（页面文件不够）</span><br><span class="line">out of memory (10.6GB &gt; 8GB)         ← 显存物理极限（int8 方案的死因）</span><br><span class="line">q_scale dtype uint8                  ← GGUF BF16 反序列化（补丁 6 解决）</span><br><span class="line">正常采样循环                          ← ✅ 全链路打通</span><br></pre></td></tr></table></figure>
-
-<hr>
-<h2 id="💾-内存与性能管理"><a href="#💾-内存与性能管理" class="headerlink" title="💾 内存与性能管理"></a>💾 内存与性能管理</h2><ul>
-<li>32GB 物理内存是极限：编码器 15GB + 主模型 offload 5GB + 各类对象，<strong>运行期间必须关掉其他大程序</strong></li>
-<li>页面文件扩到独立盘符（系统盘放不下），48GB 起步</li>
-<li>崩溃后<strong>必查残留进程</strong>：python.exe 可能残留占 20GB+ 内存，清掉再重启</li>
-</ul>
-<hr>
-<h2 id="🔊-番外：能出画面，但为什么没声音？"><a href="#🔊-番外：能出画面，但为什么没声音？" class="headerlink" title="🔊 番外：能出画面，但为什么没声音？"></a>🔊 番外：能出画面，但为什么没声音？</h2><p>跑通后我兴冲冲打开视频——画面正常，<strong>但一点声音都没有</strong>。这是 H3 最容易踩的<strong>静默失败</strong>：不报错，就是没音轨。</p>
-<h3 id="根因一：视频和音频是两套独立-VAE"><a href="#根因一：视频和音频是两套独立-VAE" class="headerlink" title="根因一：视频和音频是两套独立 VAE"></a>根因一：视频和音频是两套独立 VAE</h3><p>MiniMax H3 的”音视频联合生成”指的是<strong>采样过程联合</strong>，但解码阶段两套 VAE 完全分开：</p>
-<table>
-<thead>
-<tr>
-<th>VAE</th>
-<th>文件</th>
-<th>用途</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>视频 VAE</td>
-<td><code>minimax_h3_video_vae_fp16.safetensors</code>（5.2GB）</td>
-<td>解画面</td>
-</tr>
-<tr>
-<td><strong>音频 VAE</strong></td>
-<td><code>minimax_h3_audio_vae_fp32.safetensors</code>（577MB）</td>
-<td>解声音（DAC + BigVGAN 架构）</td>
-</tr>
-</tbody></table>
-<p>官方仓库两个文件分开提供，我一开始只下了视频 VAE——<strong>根本没音频解码器，当然没声音</strong>。</p>
-<h3 id="根因二：音频-latent-被静默丢弃"><a href="#根因二：音频-latent-被静默丢弃" class="headerlink" title="根因二：音频 latent 被静默丢弃"></a>根因二：音频 latent 被静默丢弃</h3><p>采样器输出的 latent 是个嵌套张量对：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">NestedTensor( video[B,24,T,H/16,W/16] , audio[B,32,2,T40] )</span><br></pre></td></tr></table></figure>
-
-<p>普通的 <code>VAEDecode</code> 只解 video，<strong>audio 分支被直接扔掉，而且不报任何错</strong>。合流节点 <code>CreateVideo</code> 的 <code>audio</code> 输入空着，出来的自然是哑巴视频。</p>
-<h3 id="解法：通用音频解码节点就够"><a href="#解法：通用音频解码节点就够" class="headerlink" title="解法：通用音频解码节点就够"></a>解法：通用音频解码节点就够</h3><p>一开始我以为要装 MiniMax 专属音频节点，翻源码才发现 ComfyUI 的通用节点 <code>VAEDecodeAudio</code> 内部已经处理了嵌套张量：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">latent = samples[<span class="string">&quot;samples&quot;</span>]</span><br><span class="line"><span class="keyword">if</span> latent.is_nested:</span><br><span class="line">    latent = latent.unbind()[-<span class="number">1</span>]   <span class="comment"># 取最后一个 = audio</span></span><br></pre></td></tr></table></figure>
-
-<p>所以工作流加两个节点就行：</p>
-<table>
-<thead>
-<tr>
-<th>节点</th>
-<th>配置</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><code>VAELoader</code></td>
-<td>加载音频 VAE（577MB）</td>
-</tr>
-<tr>
-<td><code>VAEDecodeAudio</code></td>
-<td>输入接采样器 latent + 音频 VAE</td>
-</tr>
-<tr>
-<td><code>CreateVideo</code></td>
-<td><code>audio</code> 输入接上音频解码结果</td>
-</tr>
-</tbody></table>
-<blockquote>
-<p>💡 <strong>避坑提示</strong>：音频 VAE 的识别键是 <code>pre_block.attn.zero_k_bias</code>（ComfyUI 靠它判断是不是 H3 音频 VAE）。下载后建议验证一下这个键存在，同时确认没有 <code>decoder.model.0.weight_g</code>——否则会被误判成 MiniMax Music3 的 DAV 模型。</p>
-</blockquote>
-<hr>
-<h2 id="⚡-番外二：4-步加速-LoRA，与”静默失效”这个隐形杀手"><a href="#⚡-番外二：4-步加速-LoRA，与”静默失效”这个隐形杀手" class="headerlink" title="⚡ 番外二：4 步加速 LoRA，与”静默失效”这个隐形杀手"></a>⚡ 番外二：4 步加速 LoRA，与”静默失效”这个隐形杀手</h2><p>10 步采样在 ZLUDA 上太慢，于是加上官方的 4 步 turbo LoRA（1.87GB）。本以为只是拖个节点的事，结果又踩了两个坑——其中一个<strong>不会报任何错</strong>。</p>
-<h3 id="坑一：768p-版的-shift-是-6-3，不是-12-3"><a href="#坑一：768p-版的-shift-是-6-3，不是-12-3" class="headerlink" title="坑一：768p 版的 shift 是 6&#x2F;3，不是 12&#x2F;3"></a>坑一：768p 版的 shift 是 6&#x2F;3，不是 12&#x2F;3</h3><p>同一个仓库里挂着好几个 turbo LoRA，超参并不通用。官方规格表：</p>
-<table>
-<thead>
-<tr>
-<th>模型</th>
-<th>训练分辨率</th>
-<th>训练 shift (video&#x2F;audio)</th>
-<th>推荐推理步数</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>4-step v0.1</td>
-<td>544p</td>
-<td>12 &#x2F; 3</td>
-<td>4</td>
-</tr>
-<tr>
-<td>8-step v1.0</td>
-<td>544p</td>
-<td>12 &#x2F; 3</td>
-<td>8</td>
-</tr>
-<tr>
-<td><strong>4-step v1.0 768p</strong></td>
-<td><strong>768p</strong></td>
-<td><strong>6 &#x2F; 3</strong></td>
-<td><strong>4</strong></td>
-</tr>
-<tr>
-<td>8-step v1.0 768p</td>
-<td>768p</td>
-<td>6 &#x2F; 3</td>
-<td>8</td>
-</tr>
-</tbody></table>
-<p>只看”几步”去抄参数是错的，必须同时核对<strong>版本</strong>和<strong>分辨率</strong>两列。基础版工作流用的 shift 是 12&#x2F;3，换上 768p 的 LoRA 后必须改成 <strong>6&#x2F;3</strong>，否则 sigma 网格对不上蒸馏时学到的轨迹，步数再少也白搭。</p>
-<h3 id="坑二：LoRA-加载失败是静默的"><a href="#坑二：LoRA-加载失败是静默的" class="headerlink" title="坑二：LoRA 加载失败是静默的"></a>坑二：LoRA 加载失败是静默的</h3><p>这是本文第二个”最值钱”的坑。</p>
-<p>给模型挂上 LoRA，点 Queue，<strong>没有任何报错</strong>，视频照常生成，进度条照常走完——但速度和画质<strong>一点没变</strong>。LoRA 根本没生效。</p>
-<p>原因出在键名前缀：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">主模型 state_dict :  blocks.0.attn.qkv_proj.weight            ← 无前缀</span><br><span class="line">官方 turbo LoRA   :  diffusion_model.blocks.0.attn.qkv_proj   ← 有 diffusion_model. 前缀</span><br></pre></td></tr></table></figure>
-
-<p>ComfyUI 的 <code>comfy/lora.py</code> 里，<code>model_lora_keys_unet()</code> 给 Flux、SD3、Kandinsky5、LTXV、QwenImage 等<strong>每个架构单独写了一段键名映射</strong>——但 MiniMax H3 是新增架构，<strong>还没有它的分支</strong>，于是只能落到”无前缀”的通用映射上，命中率 <strong>0 &#x2F; 208</strong>。</p>
-<p>而 <code>load_lora_for_models()</code> 匹配不到键时，只会在日志里打一行 <code>lora key not loaded</code>，然后<strong>继续正常执行</strong>。生成结果完全合法，只是 LoRA 的贡献为零——白占 1.87GB 显存和几十秒加载时间。</p>
-<p><strong>怎么验证</strong>：不需要真去加载 10GB 模型，纯静态比对键名即可。</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># sd_keys 取自 GGUF 的 tensor 名；mods 取自 LoRA 的 lora_A/lora_B 键去后缀</span></span><br><span class="line">key_map = &#123;k[:-<span class="built_in">len</span>(<span class="string">&quot;.weight&quot;</span>)]: k <span class="keyword">for</span> k <span class="keyword">in</span> sd_keys&#125;   <span class="comment"># 通用映射（补丁前）</span></span><br><span class="line"><span class="comment"># → MATCHED: 0     MISSING: 208</span></span><br><span class="line"></span><br><span class="line">key_map[<span class="string">&quot;diffusion_model.&quot;</span> + k[:-<span class="number">7</span>]] = k              <span class="comment"># 补上前缀映射</span></span><br><span class="line"><span class="comment"># → MATCHED: 208   MISSING: 0     ✅</span></span><br></pre></td></tr></table></figure>
-
-<p><strong>怎么修</strong>：在 <code>comfy/lora.py</code> 的 <code>return key_map</code> 之前加一段：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> <span class="built_in">isinstance</span>(model, comfy.model_base.MiniMaxH3):</span><br><span class="line">    <span class="keyword">for</span> k <span class="keyword">in</span> sdk:</span><br><span class="line">        <span class="keyword">if</span> k.endswith(<span class="string">&quot;.weight&quot;</span>):</span><br><span class="line">            key_lora = k[:-<span class="built_in">len</span>(<span class="string">&quot;.weight&quot;</span>)]</span><br><span class="line">            key_map[<span class="string">&quot;diffusion_model.&#123;&#125;&quot;</span>.<span class="built_in">format</span>(key_lora)] = k</span><br><span class="line">            key_map[<span class="string">&quot;transformer.&#123;&#125;&quot;</span>.<span class="built_in">format</span>(key_lora)] = k</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>⚠️ 改的是核心文件，<strong>必须重启 ComfyUI</strong> 才生效。重启后跑一次，日志里<strong>不应</strong>再出现 <code>lora key not loaded</code>。</p>
-</blockquote>
-<p>顺带一提，这个 LoRA 用的是 PEFT 命名（<code>lora_A.weight</code> &#x2F; <code>lora_B.weight</code>），不是 ComfyUI 常见的 <code>lora_up</code> &#x2F; <code>lora_down</code>。这个是<strong>没问题的</strong>——ComfyUI 的 <code>weight_adapter</code> 已经内置了 diffusers2 分支来处理它。</p>
-<h3 id="参数对照"><a href="#参数对照" class="headerlink" title="参数对照"></a>参数对照</h3><table>
-<thead>
-<tr>
-<th>参数</th>
-<th>基础版</th>
-<th>4 步加速版</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>节点链</td>
-<td>加载器 → SigmaShift</td>
-<td>加载器 → <strong>LoraLoaderModelOnly</strong> → SigmaShift</td>
-</tr>
-<tr>
-<td><code>strength_model</code></td>
-<td>—</td>
-<td>1.0</td>
-</tr>
-<tr>
-<td><code>steps</code></td>
-<td>10</td>
-<td><strong>4</strong></td>
-</tr>
-<tr>
-<td><code>shift_video</code></td>
-<td>12</td>
-<td><strong>6</strong></td>
-</tr>
-<tr>
-<td><code>shift_audio</code></td>
-<td>3</td>
-<td>3</td>
-</tr>
-<tr>
-<td><code>cfg</code></td>
-<td>5.0</td>
-<td><strong>1.0（实测后定为本工作流默认值）</strong></td>
-</tr>
-<tr>
-<td>sampler &#x2F; scheduler</td>
-<td>euler &#x2F; simple</td>
-<td>euler &#x2F; simple</td>
-</tr>
-</tbody></table>
-<p>注意 LoRA 必须插在 <strong>SigmaShift 之前</strong>。</p>
-<blockquote>
-<p>⚠️ <strong>cfg 这一行是实测改过的</strong>：蒸馏版 LoRA 学的是”无负向引导”的采样轨迹，cfg&#x3D;5 会把采样拽离蒸馏流形——实测表现是<strong>画面糊 + 帧间闪烁</strong>，而速度只比 cfg&#x3D;1 慢约 15%（见下方实测数据）。所以 cfg&#x3D;1.0 不是为了省时间，是<strong>画质必需</strong>。</p>
-</blockquote>
-<h3 id="另外两个小知识"><a href="#另外两个小知识" class="headerlink" title="另外两个小知识"></a>另外两个小知识</h3><p><strong>GGUF 量化模型叠 LoRA 会不会爆显存？</strong> 不会。ComfyUI-GGUF 对量化权重走的是<strong>延迟 patch</strong>：保持量化状态，把 patch 挂上去，等到真正 forward 时才逐层反量化合并——不会一次性把 10GB 模型展开成 bf16。对 8GB 显卡相当友好。</p>
-<p><strong>帧数不是随便填的。</strong> 官方工作流用 <code>max(5, round(a*24)) + (5 - (max(5, round(a*24)) % 17)) % 17</code> 来对齐帧数，等价于要求 <code>length % 17 == 5</code>（H3 的时间维压缩对齐）。124 帧正好合规（124 &#x3D; 7×17 + 5）。</p>
-<h3 id="已知取舍"><a href="#已知取舍" class="headerlink" title="已知取舍"></a>已知取舍</h3><ul>
-<li>turbo 模式下<strong>音频与运动质量略低于</strong>全步数版本（ComfyUI 官方文档口径）。</li>
-<li>LoRA 训练分辨率是 768p（1344×768），当前跑 864×480 低于原生画布，增益打折；显存允许可试 1344×768。</li>
-<li><del>显存吃紧时把 cfg 降到 1.0 可以省掉一半前向计算</del> → <strong>实测更正</strong>：cfg&#x3D;1 相对 cfg&#x3D;5 只快约 <strong>15%</strong>，远不到一半。原因见下节——lowvram 模式下瓶颈是 PCIe 搬运，不是算力。降 cfg 的正确理由是<strong>画质</strong>（消除糊和闪），不是省时间。</li>
-</ul>
-<hr>
-<h2 id="📊-实测数据：8GB-显存的真实成绩单"><a href="#📊-实测数据：8GB-显存的真实成绩单" class="headerlink" title="📊 实测数据：8GB 显存的真实成绩单"></a>📊 实测数据：8GB 显存的真实成绩单</h2><p>以上都是”能跑”，这一节回答”多慢”。同一台机（RX 6650 XT 8GB + 32GB 内存）：</p>
-<table>
-<thead>
-<tr>
-<th>配置</th>
-<th>全程耗时</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>416×256×22 帧 × 4 步 × cfg1</td>
-<td><strong>采样仅约 50 秒</strong></td>
-<td>冷启动总耗时 15~16 分钟，大头是模型加载 + CPU 文本编码</td>
-</tr>
-<tr>
-<td>864×480×124 帧 × 4 步 × cfg5</td>
-<td>1:05:01</td>
-<td>冷启动（约 6min 模型加载 + 约 10min CPU 文本编码）</td>
-</tr>
-<tr>
-<td>864×480×124 帧 × 4 步 × <strong>cfg1</strong></td>
-<td><strong>45:49</strong></td>
-<td>热机 + 提示词缓存命中，几乎纯采样&#x2F;解码</td>
-</tr>
-</tbody></table>
-<p>三个反直觉的结论：</p>
-<ol>
-<li><strong>cfg&#x3D;1.0 只快约 15%，不是理论上的 2 倍。</strong> lowvram 模式下每次前向都要从内存搬约 5.3GB 权重过 PCIe，瓶颈在<strong>搬运</strong>不在算力——砍掉负向分支省不了多少墙钟时间。<strong>想提速：降分辨率&#x2F;帧数 &gt; 固定提示词吃 CLIP 缓存 &gt; 降 cfg（最后才轮到它）。</strong></li>
-<li><strong>文本编码器走 CPU 是每段视频约 10 分钟的固定税。</strong> Qwen3-VL 32B 的 nvfp4 权重进不了显存，只能 CPU 编码。但提示词不变时命中 CLIP 缓存，10 分钟 → 约 2 分钟。所以<strong>批量出片固定提示词、只改 seed</strong> 最划算。</li>
-<li><strong>22 帧 ≈ 0.92 秒。</strong> 帧数换算别想当然：124 帧 @24fps 才约 5 秒，22 帧的”最小验证参数”其实不到 1 秒。</li>
-</ol>
-<blockquote>
-<p>💡 顺带一个排查经验：ComfyUI 的<strong>节点缓存</strong>会让同样参数的二次运行 0.28 秒就”跑完”。做计时测试务必改 seed，否则测的是缓存不是显卡。</p>
-</blockquote>
-<hr>
-<h2 id="🎬-图生视频：让固定人物出演任意场景"><a href="#🎬-图生视频：让固定人物出演任意场景" class="headerlink" title="🎬 图生视频：让固定人物出演任意场景"></a>🎬 图生视频：让固定人物出演任意场景</h2><p>H3 原生支持两条图生视频路线，都已跑通（turbo LoRA 通用，输出同样带声音）：</p>
-<p><strong>路线 A：首帧驱动（让这张图动起来）</strong><br><code>MiniMaxH3ImageToVideo</code> 有可选的 <code>first_frame</code> 输入。图片会被拉伸为视频第 0 帧作锚点，人物主体天然不变，模型续演出动作和声音。改动最小，适合”让这张图动起来”。</p>
-<p><strong>路线 B：参考图模式（主体一致、场景随便换）</strong><br><code>MiniMaxH3ReferenceToVideo</code> 节点，参考图最多 9 张（多角度图身份更稳），prompt 里用 <code>&lt;Picture 1&gt;</code> 标签指代，每换一段 prompt 就是一个新场景视频。注意：</p>
-<ul>
-<li>必须把 <strong>音频 VAE</strong> 接到节点的 <code>audio_vae</code> 输入，否则同样没声音</li>
-<li><code>ref_image_size=match</code> 快（参考图缩放到生成画布面积）；<code>max</code> 身份保真更好，但参考 token 每步参与采样，<strong>能慢数倍</strong></li>
-<li>⚠️ <strong>身份保持的下限取决于参考图质量</strong>：参考图过于简陋&#x2F;抽象时，模型会直接回退到训练数据里的”通用动漫人物”先验，参考图形同虚设——想锁定自己的角色，必须给清晰、特征明确的人物图</li>
-</ul>
-<hr>
-<h2 id="✅-排错-checklist（收藏版）"><a href="#✅-排错-checklist（收藏版）" class="headerlink" title="✅ 排错 checklist（收藏版）"></a>✅ 排错 checklist（收藏版）</h2><p>按这个顺序查，能覆盖 90% 的翻车场景：</p>
-<ol>
-<li>报错位置随机 → 先怀疑 ZLUDA context 损坏，确认前置补丁全部生效</li>
-<li>OOM 且权重文件 &gt;10GB → 换更小量化（int8 不行就 Q4_K）</li>
-<li>GGUF 加载报 <code>dtype uint8</code> → BF16 反序列化缺失，补分支</li>
-<li>出画面没声音 → 查音频 VAE 是否下载 + latent 是否接了 <code>VAEDecodeAudio</code></li>
-<li>LoRA 无效 → 日志搜 <code>lora key not loaded</code>，查架构键名前缀映射</li>
-<li>抄参数先核对「<strong>版本 + 分辨率</strong>」两列，只看”几步”必错</li>
-<li>崩溃重启前先杀 python 残留进程（可占 20GB+ 内存）</li>
-<li>turbo 模型画质崩（糊 + 闪）→ 先查 cfg 是不是没设 <strong>1.0</strong></li>
-<li>出片太慢 → 顺序：降分辨率&#x2F;帧数 &gt; 固定提示词吃 CLIP 缓存 &gt; 降 cfg（最后才轮到它）</li>
-<li>参考图模式人物不像 → 参考图质量问题，换清晰、多角度的人物图，或试 <code>ref_image_size=max</code></li>
-</ol>
-<hr>
-<h2 id="📝-写在最后"><a href="#📝-写在最后" class="headerlink" title="📝 写在最后"></a>📝 写在最后</h2><p>整个过程最大的体会：<strong>AMD 跑 AI 不是不行，是坑多</strong>。ZLUDA 伪造算力、分配器不兼容、GGUF 反序列化漏分支……每一个都是”看起来像玄学、查下去全是逻辑”的问题。</p>
-<p>如果你也是 AMD 用户想跑大模型，记住这几句话：</p>
-<ol>
-<li>显存不够就上 Q4 量化，int8 只是减半，不够</li>
-<li>报错随机 ≠ 问题随机，先查 CUDA 上下文是否健康</li>
-<li>GGUF 的 BF16 张量，十有八九是反序列化问题</li>
-<li><strong>不报错的失败最贵</strong>：没声音、LoRA 不生效、参考图不生效，都不会报错。判断有没有生效要靠日志和 ablation，而不是”跑完了就算成功”</li>
-<li><strong>提速先降分辨率，别先降 cfg</strong>：8GB 卡的瓶颈是 PCIe 搬运，cfg 5→1 只快 15%，砍一档分辨率能快一倍</li>
-</ol>
-<p>祝你也跑通 🎉</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/09/01/AMD%E6%98%BE%E5%8D%A1%E8%B7%91%E9%80%9AMiniMax-H3%E8%A7%86%E9%A2%91%E5%85%A8%E5%AE%B6%E6%A1%B6-ZLUDA%E4%B8%8EGGUF%E6%8E%92%E9%94%99%E5%AE%9E%E5%BD%95/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1270,9 +350,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-08-26 21:39:00 / 修改时间：21:40:14" itemprop="dateCreated datePublished" datetime="2026-08-26T21:39:00+08:00">2026-08-26</time>
+      <time title="创建时间：2026-08-26 21:39:00" itemprop="dateCreated datePublished" datetime="2026-08-26T21:39:00+08:00">2026-08-26</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-04 05:47:11" itemprop="dateModified" datetime="2026-09-04T05:47:11+08:00">2026-09-04</time>
     </span>
 
   
@@ -1286,7 +372,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>比较简单，打发时间的小品游戏。很适合后台挂个AI干活的时候玩。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/08/26/%E8%BF%99%E4%B8%AA%E5%BA%A7%E4%BD%8D%E6%9C%89%E4%BA%BA%E5%9D%90%E5%90%97/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1340,9 +433,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-08-23 20:06:00 / 修改时间：20:07:40" itemprop="dateCreated datePublished" datetime="2026-08-23T20:06:00+08:00">2026-08-23</time>
+      <time title="创建时间：2026-08-23 20:06:00" itemprop="dateCreated datePublished" datetime="2026-08-23T20:06:00+08:00">2026-08-23</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-04 05:47:09" itemprop="dateModified" datetime="2026-09-04T05:47:09+08:00">2026-09-04</time>
     </span>
 
   
@@ -1356,69 +455,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <h1 id="dsh-model-fix"><a href="#dsh-model-fix" class="headerlink" title="dsh-model-fix"></a>dsh-model-fix</h1><p>修复特定模型在 DeepSeek Harness（DSH）里「流式内容正常但回合必报错」的<strong>流式收尾缺陷</strong>。</p>
-<blockquote>
-<p>本仓库是 <a target="_blank" rel="noopener" href="https://github.com/bitterSmilezzz/dsh-model-fix">bitterSmilezzz&#x2F;dsh-model-fix</a> 的增强版：<br>在原版（<code>muse-spark-1.2</code>）基础上，加入了对 <strong><code>gpt-5.6-luna</code></strong> 的支持（同一缺陷，实测<br>2026-08-23：<code>gpt-5.6-luna</code> 流式&#x2F;非流式响应的 <code>finish_reason</code> 均为 <code>null</code>，且流式不发 <code>[DONE]</code>）。</p>
-</blockquote>
-<h2 id="背景：缺陷根因"><a href="#背景：缺陷根因" class="headerlink" title="背景：缺陷根因"></a>背景：缺陷根因</h2><p>opencode 聚合端点（<code>https://opencode.ai/zen/go/v1</code>）上的 <strong>muse-spark-1.2</strong> 与<br><strong>gpt-5.6-luna</strong> 实现有缺陷：流式响应正常吐出内容，但<strong>从不发送 <code>finish_reason</code>、也不发送<br><code>[DONE]</code></strong>，流直接关闭（同端点对照 <code>deepseek-v4-flash</code> &#x2F; <code>glm-5.2</code> 均正常发送<br><code>finish_reason: &#39;stop&#39;</code> + <code>[DONE]</code>）。</p>
-<p>DSH 的 <code>llm-pi-ai</code> 走 pi-ai SDK（强制 <code>stream: true</code> 且要求流以 <code>finish_reason</code> 收尾），<br>于是每次对话的真实表现是：</p>
-<ol>
-<li>内容正常流式显示；</li>
-<li>结尾报 <code>Stream ended without finish_reason</code>（映射为 <code>TRANSPORT</code> 错误）；</li>
-<li>回合被判失败，且 <code>TRANSPORT</code> 在默认可重试列表里 → agent 级重试插件按<br><code>maxRetries</code> 反复重跑整步，<strong>烧多份 token</strong>。</li>
-</ol>
-<p>这与代理无关：直连与走代理的响应完全相同，换代理解决不了。</p>
-<h2 id="⚠️-重要说明：无需开启-opencode-的「Allow-models-that-train-on-request-data」"><a href="#⚠️-重要说明：无需开启-opencode-的「Allow-models-that-train-on-request-data」" class="headerlink" title="⚠️ 重要说明：无需开启 opencode 的「Allow models that train on request data」"></a>⚠️ 重要说明：无需开启 opencode 的「Allow models that train on request data」</h2><p>使用 muse-spark-1.2 &#x2F; gpt-5.6-luna（经 opencode-go 路由）<strong>不需要</strong>在 opencode 平台设置里<br>开启**「Allow models that train on request data」**。</p>
-<ul>
-<li>该开关是 opencode 的<strong>数据训练授权</strong>：开启后你的请求数据可能被用于模型训练，属于<br>需要慎重对待的隐私授权，<strong>不要为了使用这些模型而开启它</strong>；</li>
-<li>实测：不开启该开关，直连 <code>https://opencode.ai/zen/go/v1</code> 即可正常<br>返回内容（本插件修复的只是流式收尾缺陷，与训练授权无关）；</li>
-<li>若在 opencode 设置里看到该开关，保持<strong>关闭</strong>即可；本文档所述修复不依赖它。</li>
-</ul>
-<p>开关位置见下图（opencode 设置页 → 提供商区域，与「启用部署在中国的模型」相邻）：</p>
-<p><img src="https://raw.githubusercontent.com/bitterSmilezzz/dsh-model-fix/main/assets/opencode-settings-train-toggle.png" alt="opencode 设置页中的「Allow models that train on request data」开关（opencode 设置页 → 提供商区域）"></p>
-<h2 id="本插件做什么"><a href="#本插件做什么" class="headerlink" title="本插件做什么"></a>本插件做什么</h2><p>在 <code>llm/stream</code> waterfall 上，对匹配的模型把上述缺陷收尾为正常 <code>stop</code>：</p>
-<ul>
-<li><strong>仅当流已输出内容</strong>（<code>text-delta</code> &#x2F; <code>reasoning-delta</code> &#x2F; <code>tool-call-delta</code>）且<br>结尾错误代码为 <code>TRANSPORT</code> &#x2F; <code>STREAM_CLOSED</code> <strong>且错误信息明确是「缺少终止事件」</strong><br>（如 <code>Stream ended without finish_reason</code>）时才改写；</li>
-<li>真实传输故障（如 <code>SocketError: other side closed</code>）<strong>不受影响，照常失败</strong>；</li>
-<li>无内容的空响应也照常失败，不会被误吞。</li>
-</ul>
-<p>修复后 muse-spark-1.2 &#x2F; gpt-5.6-luna 直连即可正常使用，无需代理、不触发重试。</p>
-<h2 id="安装"><a href="#安装" class="headerlink" title="安装"></a>安装</h2><figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 从 GitHub 安装（推荐）</span></span><br><span class="line">npx -y @deepseek-ai/dsh plugin --profile web add github:Retr67/dsh-model-fix</span><br><span class="line"></span><br><span class="line"><span class="comment"># 本地路径</span></span><br><span class="line"><span class="comment"># dsh plugin --profile web add /path/to/dsh-model-fix</span></span><br></pre></td></tr></table></figure>
-
-<p>安装后<strong>重启目标 profile</strong>（如 <code>dsh web</code>）生效。</p>
-<h2 id="配置"><a href="#配置" class="headerlink" title="配置"></a>配置</h2><p><code>cordis.patch.yml</code> 中 <code>config</code> 两个字段：</p>
-<table>
-<thead>
-<tr>
-<th>字段</th>
-<th>默认</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><code>modelPattern</code></td>
-<td><code>^(muse-spark|gpt-5\.6-luna)</code></td>
-<td>对模型 id 测试的正则；只修复匹配的模型</td>
-</tr>
-<tr>
-<td><code>providers</code></td>
-<td><code>[]</code></td>
-<td>provider 路由键白名单（如 <code>opencode-go3</code>）；空 &#x3D; 所有 provider 中匹配的模型</td>
-</tr>
-</tbody></table>
-<figure class="highlight yaml"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="bullet">-</span> <span class="attr">id:</span> <span class="string">model-fix</span></span><br><span class="line">  <span class="attr">name:</span> <span class="string">dsh-model-fix</span></span><br><span class="line">  <span class="attr">config:</span></span><br><span class="line">    <span class="attr">modelPattern:</span> <span class="string">&#x27;^(muse-spark|gpt-5\.6-luna)&#x27;</span></span><br><span class="line">    <span class="attr">providers:</span> []</span><br></pre></td></tr></table></figure>
-
-<p>只修 luna 可改为 <code>modelPattern: &#39;^gpt-5\.6-luna&#39;</code>；只想限定某个路由可加<br><code>providers: [ &#39;opencode-go&#39; ]</code>。</p>
-<h2 id="开发"><a href="#开发" class="headerlink" title="开发"></a>开发</h2><figure class="highlight sh"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">pnpm install</span><br><span class="line">pnpm verify    <span class="comment"># typecheck + build + node --test</span></span><br></pre></td></tr></table></figure>
-
-<h2 id="验证矩阵"><a href="#验证矩阵" class="headerlink" title="验证矩阵"></a>验证矩阵</h2><ul>
-<li>单元测试：<code>tests/fix.test.mjs</code> 覆盖缺陷识别、内容保留、空响应放行、真实故障放行等 10 例。</li>
-<li>真实端点集成验证：用 pi-ai 同款 SDK 直连 muse-spark-1.2 &#x2F; gpt-5.6-luna，内容经本插件转换后<br>结尾由 <code>error(Stream ended without finish_reason)</code> 变为 <code>&#123;&quot;kind&quot;:&quot;stop&quot;&#125;</code>。</li>
-</ul>
-<h2 id="致谢"><a href="#致谢" class="headerlink" title="致谢"></a>致谢</h2><ul>
-<li>上游：<a target="_blank" rel="noopener" href="https://github.com/bitterSmilezzz/dsh-model-fix">bitterSmilezzz&#x2F;dsh-model-fix</a>（MIT）</li>
-<li>缺陷取证（gpt-5.6-luna）：2026-08-23 直连 <code>opencode.ai/zen/go/v1</code> 复现——流式 10 个 chunk<br>中 <code>finish_reason</code> 全程 <code>null</code>、无 <code>[DONE]</code>，尾部为 <code>data: &#123;&quot;choices&quot;:[],&quot;cost&quot;:&quot;0&quot;&#125;</code>；<br>非流式响应 <code>finish_reason</code> 同样为 <code>null</code>。</li>
-</ul>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/08/23/FIXModelError/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1480,7 +524,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-09-02 06:02:02" itemprop="dateModified" datetime="2026-09-02T06:02:02+08:00">2026-09-02</time>
+      <time title="修改时间：2026-09-04 05:47:10" itemprop="dateModified" datetime="2026-09-04T05:47:10+08:00">2026-09-04</time>
     </span>
 
   
@@ -1494,88 +538,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <h1 id="dsh-plugin-manager"><a href="#dsh-plugin-manager" class="headerlink" title="dsh-plugin-manager"></a>dsh-plugin-manager</h1><p>DeepSeek Harness (DSH) 插件管理器：在 WebUI <strong>设置 → 插件 → 插件管理</strong> 里可视化<strong>查看、临时打开、关闭</strong>其他插件。</p>
-<ul>
-<li><strong>用户插件</strong>（可开关）：你在 <code>profile/package.json</code> 里安装的社区插件 + 你自己在 <code>cordis.patch.yml</code> 里加的条目（如 MCP 桥梁）。</li>
-<li><strong>系统组件</strong>（只读）：DSH 自带的 host&#x2F;web 基础设施，只展示、不提供开关，避免误关导致 Harness 起不来。</li>
-<li>开关<strong>无需重启 dsh</strong>：走的是 Cordis loader 的 <code>entry.update(&#123; disabled &#125;)</code>（与官方 dsh-market 主题开关同一条路）。默认在切换后<strong>自动刷新网页</strong>，让带前端界面的插件（桌宠、侧边栏等）也立即完全生效；也可在面板里切到<strong>手动刷新</strong>模式（选择保存在浏览器 localStorage）。</li>
-<li><strong>跨重启保持</strong>：被关闭的插件 id 会记在 <code>&lt;profile&gt;/.plugin-manager/state.json</code>，下次启动时自动回放为关闭，直到你把它打开。</li>
-<li>「全部恢复开启」按钮一键清空所有保持关闭的插件。</li>
-</ul>
-<h2 id="环境要求"><a href="#环境要求" class="headerlink" title="环境要求"></a>环境要求</h2><ul>
-<li><a target="_blank" rel="noopener" href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness (dsh)</a></li>
-<li>Node.js（含 <code>npx</code>）</li>
-<li>Windows &#x2F; macOS &#x2F; Linux 均可</li>
-</ul>
-<h2 id="安装（一行命令）"><a href="#安装（一行命令）" class="headerlink" title="安装（一行命令）"></a>安装（一行命令）</h2><p>在任意终端执行（默认安装到 <code>web</code> profile）：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npx -y @deepseek-ai/dsh plugin --profile web add https://github.com/Retr67/dsh-plugin-manager.git</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>该命令会：① 安装依赖；② 检测到包声明了 <code>dsh.bundle</code>，自动把插件加进 <code>dsh.profile.bundles</code>（下次启动自动加载）。</p>
-</blockquote>
-<p>如果你的 <code>dsh</code> 已全局可用，也可以直接：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">dsh plugin --profile web add https://github.com/Retr67/dsh-plugin-manager.git</span><br></pre></td></tr></table></figure>
-
-<h3 id="安装到其他-profile"><a href="#安装到其他-profile" class="headerlink" title="安装到其他 profile"></a>安装到其他 profile</h3><p>把 <code>web</code> 换成你的 profile 名：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npx -y @deepseek-ai/dsh plugin --profile myprofile add https://github.com/Retr67/dsh-plugin-manager.git</span><br></pre></td></tr></table></figure>
-
-<h2 id="使用"><a href="#使用" class="headerlink" title="使用"></a>使用</h2><ol>
-<li><strong>重启 dsh</strong>：安装后重启一次 <code>dsh web</code>（让插件加载），并<strong>刷新浏览器页面</strong>。</li>
-<li>打开 <strong>设置（⚙️ &#x2F; Settings）→ 插件 → 插件管理</strong>。</li>
-<li>你会看到：<ul>
-<li><strong>用户插件（可开关）</strong>：每个插件一行，右侧有开关，点击即可<strong>打开 &#x2F; 关闭</strong>。</li>
-<li><strong>系统组件（只读）</strong>：只展示，不提供开关，防止误关导致 Harness 起不来。</li>
-</ul>
-</li>
-<li>刷新模式：<ul>
-<li>默认<strong>自动刷新</strong>：开关后页面自动刷新，带前端界面的插件也会立即完全生效。</li>
-<li>可切到<strong>手动刷新</strong>：开关后不自动刷新，点面板里的「刷新」或手动刷新网页后生效（选择会保存在浏览器 localStorage）。</li>
-</ul>
-</li>
-</ol>
-<h2 id="卸载"><a href="#卸载" class="headerlink" title="卸载"></a>卸载</h2><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">npx -y @deepseek-ai/dsh plugin --profile web remove dsh-plugin-manager</span><br></pre></td></tr></table></figure>
-
-<h2 id="结构"><a href="#结构" class="headerlink" title="结构"></a>结构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br></pre></td><td class="code"><pre><span class="line">dsh-plugin-manager/</span><br><span class="line">├── package.json        # dsh.bundle + dsh.client 声明</span><br><span class="line">├── cordis.patch.yml    # 挂载 plugin-manager 主机条目</span><br><span class="line">├── dsh/</span><br><span class="line">│   ├── index.js        # 主机端：HTTP API + loader 枚举/开关 + 状态持久化</span><br><span class="line">│   └── client.js       # 浏览器端：注册 设置→插件→插件管理 标签页（React）</span><br><span class="line">├── install.ps1         # Windows 一键安装脚本（内部即标准 npx 命令）</span><br><span class="line">├── install.sh          # POSIX 一键安装脚本（内部即标准 npx 命令）</span><br><span class="line">├── README.md</span><br><span class="line">└── LICENSE             # MIT</span><br></pre></td></tr></table></figure>
-
-<blockquote>
-<p>install.ps1 &#x2F; install.sh 只是标准命令的便捷封装，默认安装源是 GitHub 仓库；不以自定义 <code>file:</code> 路径作为主安装方式。</p>
-</blockquote>
-<h2 id="与官方机制的关系"><a href="#与官方机制的关系" class="headerlink" title="与官方机制的关系"></a>与官方机制的关系</h2><ul>
-<li>不对 <code>package.json</code> 的 <code>dsh.profile.bundles</code> 做热增删（那需要重启生效），而是对<strong>运行中的 loader entry</strong> 做热开关——这是 dsh-market 主题切换验证过的做法。</li>
-<li>状态持久化、启动回放、自愈守卫（<code>internal/plugin</code> 事件）同样移植自 dsh-market。</li>
-<li>group 插件（如把某个插件包包裹成 group 的宿主）无法直接置 <code>disabled</code>，管理器会自动改为开关其子条目。</li>
-</ul>
-<h2 id="HTTP-API（同源校验）"><a href="#HTTP-API（同源校验）" class="headerlink" title="HTTP API（同源校验）"></a>HTTP API（同源校验）</h2><table>
-<thead>
-<tr>
-<th>方法</th>
-<th>路径</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>GET</td>
-<td><code>/plugin-manager/list</code></td>
-<td>返回插件列表与开关状态</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/plugin-manager/toggle</code></td>
-<td><code>&#123; id, enabled &#125;</code> 热开关某个插件</td>
-</tr>
-<tr>
-<td>POST</td>
-<td><code>/plugin-manager/reset</code></td>
-<td>恢复所有被保持关闭的插件</td>
-</tr>
-</tbody></table>
-<p>POST 接口（<code>toggle</code>&#x2F;<code>reset</code>）做了 Origin &#x3D;&#x3D;&#x3D; Host 的同源校验；GET 列表是只读、且只暴露在回环地址绑定的 web server 上，不再要求 Origin 头（同源 GET fetch 默认不携带 Origin，要求它会导致面板报 <code>untrusted origin</code>）。</p>
-<h2 id="安全"><a href="#安全" class="headerlink" title="安全"></a>安全</h2><ul>
-<li>主机端仅使用 node 内置模块（fs&#x2F;os&#x2F;path），无网络调用、无子进程、无 eval。</li>
-<li>客户端用 React 渲染插件名（自动转义，无 XSS），所有请求都是同源 fetch。</li>
-<li>管理器自己（<code>plugin-manager</code>）不会被关闭；系统组件不会提供开关。</li>
-</ul>
-<h2 id="License"><a href="#License" class="headerlink" title="License"></a>License</h2><p>MIT</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/08/19/dsh%E6%8F%92%E4%BB%B6%E7%AE%A1%E7%90%86%E5%99%A8/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1629,9 +599,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-08-19 20:14:40 / 修改时间：20:26:11" itemprop="dateCreated datePublished" datetime="2026-08-19T20:14:40+08:00">2026-08-19</time>
+      <time title="创建时间：2026-08-19 20:14:40" itemprop="dateCreated datePublished" datetime="2026-08-19T20:14:40+08:00">2026-08-19</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-04 05:47:11" itemprop="dateModified" datetime="2026-09-04T05:47:11+08:00">2026-09-04</time>
     </span>
 
   
@@ -1645,8 +621,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>原因：酒馆发送的请求主体中不能有stop主体参数。</p>
-<p>解决办法：点击API设置界面的附加参数按钮，在排除主体参数栏内填写stop，以不发送此主体参数。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/08/19/%E8%A7%A3%E5%86%B3%E9%85%92%E9%A6%86%E4%BD%BF%E7%94%A8opencodeGo%E7%9A%84luna%E6%8A%A5badQuest%E7%9A%84%E9%97%AE%E9%A2%98/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1700,9 +682,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-08-18 01:46:00 / 修改时间：21:34:32" itemprop="dateCreated datePublished" datetime="2026-08-18T01:46:00+08:00">2026-08-18</time>
+      <time title="创建时间：2026-08-18 01:46:00" itemprop="dateCreated datePublished" datetime="2026-08-18T01:46:00+08:00">2026-08-18</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-04 05:47:10" itemprop="dateModified" datetime="2026-09-04T05:47:10+08:00">2026-09-04</time>
     </span>
 
   
@@ -1716,52 +704,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>Automatic <strong>Gemini API key rotation</strong> for <a target="_blank" rel="noopener" href="https://github.com/liustack/modlens">modlens</a> on <strong>DeepSeek Harness (dsh)</strong> — when one key hits its quota (HTTP 429), the read<br>automatically switches to the next key in the pool and retries, with zero<br>intervention. Works everywhere modlens reads an image: the dsh GUI paste flow,<br>the <code>modlens_read_image</code> tool, and the CLI.</p>
-<blockquote>
-<p>⚠️ <strong>Unofficial</strong>: this patches the installed modlens package. The patch is<br>wiped by any modlens <em>upgrade</em>; <code>patch.ps1</code> re-applies it in one command.<br>If modlens upstream ever ships native multi-key support, drop this project.</p>
-</blockquote>
-<h2 id="Why"><a href="#Why" class="headerlink" title="Why"></a>Why</h2><p>modlens reads images through a single Gemini API key stored in <code>~/.modlens/config.json</code>. Free-tier keys hit daily quota (429 <code>RESOURCE_EXHAUSTED</code>) &#x2F; rate limits quickly, and modlens has no retry or<br>failover for that. This project adds:</p>
-<ul>
-<li>a <strong>key pool</strong> (<code>~/.modlens/api-keys.json</code>) — list, add, rotate, inspect</li>
-<li>an <strong>engine patch</strong> — 429 triggers an automatic switch to the next pool key,<br>persisted to the config, then a retry of the same request (up to 8 rotations)</li>
-<li>a <strong>CLI wrapper</strong> — 429 → rotate + retry; 5xx → backoff retry on the same key</li>
-<li>a <strong>re-patch script</strong> — re-applies the engine patch after a modlens upgrade</li>
-</ul>
-<h2 id="Requirements"><a href="#Requirements" class="headerlink" title="Requirements"></a>Requirements</h2><ul>
-<li>DeepSeek Harness (dsh) with the modlens plugin installed: <code>npx -y @deepseek-ai/dsh plugin --profile web add @liustack/modlens@&lt;version&gt;</code></li>
-<li>Node 22.19+ (modlens requirement)</li>
-<li>PowerShell (Windows) — the scripts are <code>.ps1</code></li>
-</ul>
-<h2 id="Install"><a href="#Install" class="headerlink" title="Install"></a>Install</h2><p>Clone this repo (or copy <code>scripts/</code>), then:</p>
-<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># 1. copy scripts next to the modlens config</span></span><br><span class="line"><span class="built_in">Copy-Item</span> scripts\* <span class="string">&quot;<span class="variable">$env:USERPROFILE</span>\.modlens\&quot;</span></span><br><span class="line"><span class="comment"># or link: New-Item -ItemType SymbolicLink ... (per-file)</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 2. apply the engine patch (idempotent)</span></span><br><span class="line">powershell <span class="literal">-ExecutionPolicy</span> Bypass <span class="operator">-File</span> <span class="string">&quot;<span class="variable">$env:USERPROFILE</span>\.modlens\patch.ps1&quot;</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># 3. seed the key pool (one command per key)</span></span><br><span class="line">powershell <span class="literal">-ExecutionPolicy</span> Bypass <span class="operator">-File</span> <span class="string">&quot;<span class="variable">$env:USERPROFILE</span>\.modlens\rotate.ps1&quot;</span> add &lt;GEMINI_API_KEY&gt;</span><br></pre></td></tr></table></figure>
-
-<p>The active key is the one modlens uses: if you already configured a key via <code>modlens config set gemini-api.apiKey</code>, add it to the pool too so rotation can<br>cycle back to it.</p>
-<h2 id="Usage"><a href="#Usage" class="headerlink" title="Usage"></a>Usage</h2><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br></pre></td><td class="code"><pre><span class="line"><span class="comment"># manage the pool</span></span><br><span class="line">rotate.ps1 list                          <span class="comment"># show pool, &gt;&gt; marks the active key</span></span><br><span class="line">rotate.ps1 status                        <span class="comment"># pool size + active key (masked)</span></span><br><span class="line">rotate.ps1 rotate                        <span class="comment"># switch to the next key (persists)</span></span><br><span class="line">rotate.ps1 add &lt;key&gt;                     <span class="comment"># add a key to the pool</span></span><br><span class="line"></span><br><span class="line"><span class="comment"># read an image with automatic rotation</span></span><br><span class="line">ml.ps1 <span class="literal">-Image</span> &lt;path<span class="operator">-or</span><span class="literal">-url</span>&gt;</span><br></pre></td></tr></table></figure>
-
-<p>The engine patch makes rotation automatic for <strong>every</strong> read path (GUI paste, <code>modlens_read_image</code> tool, CLI), so <code>rotate.ps1 rotate</code> is mainly for manual<br>override or diagnosis.</p>
-<h3 id="If-you-use-a-proxy"><a href="#If-you-use-a-proxy" class="headerlink" title="If you use a proxy"></a>If you use a proxy</h3><p>modlens itself supports it — no changes needed here:</p>
-<figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">modlens config <span class="built_in">set</span> proxy http://<span class="number">127.0</span>.<span class="number">0.1</span>:&lt;port&gt;</span><br></pre></td></tr></table></figure>
-
-<p>Note: Google’s Gemini API is region-restricted. A proxy exit in an unsupported<br>region (e.g. mainland China, Thailand) fails with <code>400 User location is not supported</code> for <strong>all</strong> keys — rotation cannot fix<br>that; switch the proxy node instead.</p>
-<h2 id="After-a-modlens-upgrade"><a href="#After-a-modlens-upgrade" class="headerlink" title="After a modlens upgrade"></a>After a modlens upgrade</h2><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">powershell <span class="literal">-ExecutionPolicy</span> Bypass <span class="operator">-File</span> <span class="string">&quot;<span class="variable">$env:USERPROFILE</span>\.modlens\patch.ps1&quot;</span></span><br></pre></td></tr></table></figure>
-
-<p>It detects whether the patch is still present; if a new version changed the<br>targeted code and the hunks no longer match, it reports which hunk failed and<br>tells you to file a new patch.</p>
-<h2 id="How-it-works"><a href="#How-it-works" class="headerlink" title="How it works"></a>How it works</h2><p>modlens ships two components in one package:</p>
-<ul>
-<li><code>dsh/index.js</code> — the dsh plugin shell: registers <code>modlens_read_image</code>,<br>handles paste-to-path. It contains <strong>no</strong> image-reading logic; it spawns a<br>child process running the CLI engine.</li>
-<li><code>dist/main.js</code> — the CLI engine: reads the image, calls Gemini<br>(<code>executeGeminiApi</code>), parses structured JSON. <strong>Every</strong> read path funnels<br>through this file.</li>
-</ul>
-<p>The patch lives in <code>executeGeminiApi</code>: a single request becomes a loop that<br>rotates the pool on 429. See <code>PATCH.md</code> for the exact change.</p>
-<h2 id="Security"><a href="#Security" class="headerlink" title="Security"></a>Security</h2><ul>
-<li>Keys are stored <strong>in plain text</strong> at <code>~/.modlens/api-keys.json</code> (same trust<br>level as modlens’s own <code>config.json</code>, which also stores the key in plain<br>text). Do not share your home directory.</li>
-<li>This repo contains <strong>no keys, no credentials, no machine-specific paths</strong> —<br>all paths derive from <code>$env:USERPROFILE</code>.</li>
-</ul>
-<h2 id="Credits-license"><a href="#Credits-license" class="headerlink" title="Credits &amp; license"></a>Credits &amp; license</h2><ul>
-<li><strong><a target="_blank" rel="noopener" href="https://github.com/liustack/modlens">modlens</a></strong> by <strong>Leon Liu (liustack)</strong> — the vision engine this project wraps and patches. MIT licensed<br>(Copyright © 2026 Leon Liu), see <a href="LICENSE.modlens"><code>LICENSE.modlens</code></a>.<br>The patch hunks in this repo are a derivative modification of modlens<br>source and carry its MIT notice as required.</li>
-<li>This project is <strong>not endorsed by upstream</strong> — it is an independent utility<br>that depends on modlens.</li>
-<li>Our own scripts and docs: MIT (see <a href="LICENSE"><code>LICENSE</code></a>).</li>
-<li>Full attribution: <a href="ACKNOWLEDGMENTS.md"><code>ACKNOWLEDGMENTS.md</code></a> — please star<br>the upstream project, the real work lives there.</li>
-</ul>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/08/18/blog-modlens-vision-and-key-rotation/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1815,9 +765,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-08-18 01:42:00 / 修改时间：21:39:38" itemprop="dateCreated datePublished" datetime="2026-08-18T01:42:00+08:00">2026-08-18</time>
+      <time title="创建时间：2026-08-18 01:42:00" itemprop="dateCreated datePublished" datetime="2026-08-18T01:42:00+08:00">2026-08-18</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-04 05:47:10" itemprop="dateModified" datetime="2026-09-04T05:47:10+08:00">2026-09-04</time>
     </span>
 
   
@@ -1831,118 +787,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>修复 OpenViking 在 <strong>Windows + 本地向量库 + 本地 embedding 模型</strong> 组合下，记忆文件已生成但搜索不到的问题。</p>
-<h2 id="问题现象"><a href="#问题现象" class="headerlink" title="问题现象"></a>问题现象</h2><ul>
-<li>OpenViking 服务可以正常启动</li>
-<li>记忆文件可以正常生成</li>
-<li>但执行搜索时返回空结果</li>
-</ul>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ov find <span class="string">&quot;LoopingIsle&quot;</span> --context-type memory</span><br></pre></td></tr></table></figure>
-
-<p>返回：</p>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;ok&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span><span class="punctuation">,</span></span><br><span class="line">  <span class="attr">&quot;result&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;memories&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;resources&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;skills&quot;</span><span class="punctuation">:</span> <span class="punctuation">[</span><span class="punctuation">]</span><span class="punctuation">,</span></span><br><span class="line">    <span class="attr">&quot;total&quot;</span><span class="punctuation">:</span> <span class="number">0</span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<p>服务日志出现：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">openviking.storage.viking_vector_index_backend - ERROR - Error reading existing record before partial update: Strings must be encoded before hashing</span><br><span class="line">openviking.storage.collection_schemas - ERROR - Failed to write to vector database: Strings must be encoded before hashing</span><br></pre></td></tr></table></figure>
-
-<h2 id="根本原因"><a href="#根本原因" class="headerlink" title="根本原因"></a>根本原因</h2><p>OpenViking 在把字符串 ID 转成 64 位整数时，使用了：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">xxhash.xxh64(input_string)</span><br></pre></td></tr></table></figure>
-
-<p>但 <code>xxhash</code> 在 Python 3 中要求传入 <code>bytes</code>，不能直接传入 <code>str</code>，因此抛出：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">Strings must be encoded before hashing</span><br></pre></td></tr></table></figure>
-
-<p>这导致：</p>
-<ul>
-<li>记忆 Markdown 文件正常写入</li>
-<li>向量没有成功写入向量库</li>
-<li>所以记忆文件存在，但语义搜索找不到</li>
-</ul>
-<h2 id="修复"><a href="#修复" class="headerlink" title="修复"></a>修复</h2><p>修改文件：</p>
-<figure class="highlight text"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">openviking/storage/vectordb/utils/str_to_uint64.py</span><br></pre></td></tr></table></figure>
-
-<p>修改前：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">str_to_uint64</span>(<span class="params">input_string: <span class="built_in">str</span></span>) -&gt; <span class="built_in">int</span>:</span><br><span class="line">    <span class="keyword">return</span> xxhash.xxh64(input_string).intdigest()</span><br></pre></td></tr></table></figure>
-
-<p>修改后：</p>
-<figure class="highlight python"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">def</span> <span class="title function_">str_to_uint64</span>(<span class="params">input_string: <span class="built_in">str</span></span>) -&gt; <span class="built_in">int</span>:</span><br><span class="line">    <span class="keyword">return</span> xxhash.xxh64(input_string.encode(<span class="string">&quot;utf-8&quot;</span>)).intdigest()</span><br></pre></td></tr></table></figure>
-
-<h2 id="补丁文件"><a href="#补丁文件" class="headerlink" title="补丁文件"></a>补丁文件</h2><table>
-<thead>
-<tr>
-<th>文件</th>
-<th>说明</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><code>patches/0001-fix-str_to_uint64-xxhash-encoding.patch</code></td>
-<td>Git 补丁，可直接 <code>git apply</code></td>
-</tr>
-<tr>
-<td><code>patches/patch-openviking-xxhash.ps1</code></td>
-<td>Windows PowerShell 一键打补丁脚本</td>
-</tr>
-<tr>
-<td><code>patches/fix-openviking-memory.ps1</code></td>
-<td>重置向量库并重新索引记忆的修复脚本</td>
-</tr>
-</tbody></table>
-<h2 id="使用方法"><a href="#使用方法" class="headerlink" title="使用方法"></a>使用方法</h2><h3 id="方法一：Git-apply"><a href="#方法一：Git-apply" class="headerlink" title="方法一：Git apply"></a>方法一：Git apply</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">git apply patches/0001-fix-str_to_uint64-xxhash-encoding.patch</span><br></pre></td></tr></table></figure>
-
-<h3 id="方法二：PowerShell-脚本"><a href="#方法二：PowerShell-脚本" class="headerlink" title="方法二：PowerShell 脚本"></a>方法二：PowerShell 脚本</h3><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">powershell <span class="literal">-ExecutionPolicy</span> Bypass <span class="operator">-File</span> patches\patch<span class="literal">-openviking-xxhash</span>.ps1</span><br></pre></td></tr></table></figure>
-
-<h3 id="修复后重新索引"><a href="#修复后重新索引" class="headerlink" title="修复后重新索引"></a>修复后重新索引</h3><figure class="highlight powershell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">ov reindex viking://user/default/memories <span class="literal">--mode</span> semantic_and_vectors <span class="literal">--wait</span> true</span><br><span class="line">ov find <span class="string">&quot;LoopingIsle&quot;</span> <span class="literal">--context-type</span> memory</span><br></pre></td></tr></table></figure>
-
-<h2 id="环境"><a href="#环境" class="headerlink" title="环境"></a>环境</h2><table>
-<thead>
-<tr>
-<th>项目</th>
-<th>值</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>操作系统</td>
-<td>Windows</td>
-</tr>
-<tr>
-<td>Python</td>
-<td>3.14.7</td>
-</tr>
-<tr>
-<td>OpenViking</td>
-<td>0.4.14</td>
-</tr>
-<tr>
-<td>向量库</td>
-<td>local 本地向量库</td>
-</tr>
-<tr>
-<td>Embedding</td>
-<td>本地 GGUF 模型（512 维）</td>
-</tr>
-<tr>
-<td>VLM</td>
-<td>OpenCode Go（<code>deepseek-v4-flash</code>）</td>
-</tr>
-</tbody></table>
-<h2 id="为什么很多人没遇到"><a href="#为什么很多人没遇到" class="headerlink" title="为什么很多人没遇到"></a>为什么很多人没遇到</h2><p>这个 bug 主要在以下组合下出现：</p>
-<ul>
-<li>Windows</li>
-<li>Python 3.14</li>
-<li>本地向量库</li>
-<li>本地 GGUF embedding 模型</li>
-</ul>
-<p>大多数用户使用的是：</p>
-<ul>
-<li>Linux + Docker</li>
-<li>云端 embedding API</li>
-<li>云端&#x2F;托管向量数据库</li>
-<li>较旧的 Python 版本</li>
-</ul>
-<p>所以这条本地路径测试覆盖较少。</p>
-<h2 id="额外注意"><a href="#额外注意" class="headerlink" title="额外注意"></a>额外注意</h2><p>如果只是移动了 OpenViking 目录导致向量库元数据路径不匹配，可以在配置中加：</p>
-<figure class="highlight json"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="punctuation">&#123;</span></span><br><span class="line">  <span class="attr">&quot;embedding&quot;</span><span class="punctuation">:</span> <span class="punctuation">&#123;</span></span><br><span class="line">    <span class="attr">&quot;allow_metadata_override&quot;</span><span class="punctuation">:</span> <span class="literal"><span class="keyword">true</span></span></span><br><span class="line">  <span class="punctuation">&#125;</span></span><br><span class="line"><span class="punctuation">&#125;</span></span><br></pre></td></tr></table></figure>
-
-<p>前提是模型没有换、维度没有变。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/08/18/openviking-xxhash-fix/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1996,9 +848,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-07-26 22:47:43 / 修改时间：22:50:23" itemprop="dateCreated datePublished" datetime="2026-07-26T22:47:43+08:00">2026-07-26</time>
+      <time title="创建时间：2026-07-26 22:47:43" itemprop="dateCreated datePublished" datetime="2026-07-26T22:47:43+08:00">2026-07-26</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-04 05:47:11" itemprop="dateModified" datetime="2026-09-04T05:47:11+08:00">2026-09-04</time>
     </span>
 
   
@@ -2012,9 +870,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>有始有终，值得好评。</p>
-<p>虽然后面有点赶，但感觉把想呈现的效果都呈现了。</p>
-<p>就像看了一段也许真的存在的冒险。人物的变化和成长也悄然地推进，不突兀挺好。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/07/26/%E8%B6%85%E6%97%B6%E7%A9%BA%E8%BE%89%E5%A4%9C%E5%A7%AC/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -2076,7 +939,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-07-26 01:06:00" itemprop="dateModified" datetime="2026-07-26T01:06:00+08:00">2026-07-26</time>
+      <time title="修改时间：2026-09-04 05:47:10" itemprop="dateModified" datetime="2026-09-04T05:47:10+08:00">2026-09-04</time>
     </span>
 
   
@@ -2090,12 +953,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>原本是单人游戏，但我是跟朋友一起用合作模式通的关。</p>
-<p>对于多人体验而言，如果不是多人游戏荒了，不建议把这游戏作为首选项。</p>
-<p>各种解密和动作体验中规中矩，在2026年下，没有啥新鲜内容。</p>
-<p>各种互动还算不错，动作有些僵硬。</p>
-<p>剧情方面中等偏上水准。</p>
-<p>值得一提的是，在剧情的最后，当主角处在一个特殊状态下时，一开始无法正确地前往目的地，当我以为附近有什么谜题时，突然脑子里意识到了一个新的可能性，当我把这个可能性告诉我朋友，并真的成功时，当时带给我的尤里卡时刻，还是非常震撼的，并且这个设计也十分符合剧情和玩法，让游戏的机制玩法解释了剧情，让剧情和体验更上了一层楼。甚至我有点怀疑，作者是因为这个时刻，才做了这么一款游戏。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/07/22/%E5%85%84%E5%BC%9F%E5%8F%8C%E5%AD%90%E4%BC%A0%E8%AF%B4%E9%87%8D%E5%88%B6%E7%89%88/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 

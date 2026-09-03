@@ -186,7 +186,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-07-15 23:40:18" itemprop="dateModified" datetime="2026-07-15T23:40:18+08:00">2026-07-15</time>
+      <time title="修改时间：2026-09-04 05:47:10" itemprop="dateModified" datetime="2026-09-04T05:47:10+08:00">2026-09-04</time>
     </span>
 
   
@@ -200,95 +200,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <h1 id="准备工作"><a href="#准备工作" class="headerlink" title="准备工作"></a>准备工作</h1><p>在开始之前，请确保你具备以下条件：</p>
-<ul>
-<li><p><strong>一台 Linux 服务器</strong>：本文以 Ubuntu为例。</p>
-</li>
-<li><p><strong>一个公网 IP</strong>：确保你的服务器拥有独立的公网 IP，或已做好端口映射。</p>
-</li>
-<li><p><strong>开放防火墙端口</strong>：确保服务器防火墙和云服务商的安全组放行以下端口：</p>
-</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>端口</th>
-<th>协议</th>
-<th>用途</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><strong>9987</strong></td>
-<td><strong>UDP</strong></td>
-<td><strong>语音通信</strong> (最核心)</td>
-</tr>
-<tr>
-<td>30033</td>
-<td>TCP</td>
-<td>文件传输 (头像&#x2F;图标)</td>
-</tr>
-<tr>
-<td>10011</td>
-<td>TCP</td>
-<td>服务器远程管理 (ServerQuery)</td>
-</tr>
-<tr>
-<td>41144</td>
-<td>TCP</td>
-<td>新版客户端查询端口</td>
-</tr>
-</tbody></table>
-<blockquote>
-<p><strong>许可证说明</strong>：TeamSpeak 3 对非商业用途免费，内置 <strong>1个虚拟服务器</strong> 和 <strong>32个在线用户</strong> 的限制，对绝大多数私人团队来说完全够用。</p>
-</blockquote>
-<hr>
-<h1 id="开始安装"><a href="#开始安装" class="headerlink" title="开始安装"></a>开始安装</h1><h2 id="系统更新与创建用户"><a href="#系统更新与创建用户" class="headerlink" title="系统更新与创建用户"></a>系统更新与创建用户</h2><p>为了安全，我们强烈建议<strong>不要</strong>使用 <code>root</code> 账号运行 TS3 服务。</p>
-<h2 id="更新系统"><a href="#更新系统" class="headerlink" title="更新系统"></a>更新系统</h2><p>sudo apt update &amp;&amp; sudo apt upgrade -y</p>
-<h2 id="创建一个名为-teamspeak-的系统用户"><a href="#创建一个名为-teamspeak-的系统用户" class="headerlink" title="创建一个名为 teamspeak 的系统用户"></a>创建一个名为 teamspeak 的系统用户</h2><p>sudo adduser teamspeak</p>
-<h2 id="切换到该用户"><a href="#切换到该用户" class="headerlink" title="切换到该用户"></a>切换到该用户</h2><p>su - teamspeak</p>
-<h2 id="下载服务端软件"><a href="#下载服务端软件" class="headerlink" title="下载服务端软件"></a>下载服务端软件</h2><p>进入用户目录，并从官网下载最新版服务端（请以<a target="_blank" rel="noopener" href="https://teamspeak.com/en/downloads/#server">官网</a>最新版本号为准）：</p>
-<p>cd &#x2F;home&#x2F;teamspeak</p>
-<h2 id="下载服务端压缩包-以-3-13-7-版本为例"><a href="#下载服务端压缩包-以-3-13-7-版本为例" class="headerlink" title="下载服务端压缩包 (以 3.13.7 版本为例)"></a>下载服务端压缩包 (以 3.13.7 版本为例)</h2><p>wget <a target="_blank" rel="noopener" href="https://files.teamspeak-services.com/releases/server/3.13.7/teamspeak3-server_linux_amd64-3.13.7.tar.bz2">https://files.teamspeak-services.com/releases/server/3.13.7/teamspeak3-server_linux_amd64-3.13.7.tar.bz2</a></p>
-<h2 id="解压"><a href="#解压" class="headerlink" title="解压"></a>解压</h2><p>tar -xjvf teamspeak3-server_linux_amd64-*.tar.bz2</p>
-<h2 id="启动服务器"><a href="#启动服务器" class="headerlink" title="启动服务器"></a>启动服务器</h2><p>进入解压后的目录，接受许可协议并启动：</p>
-<p>cd teamspeak3-server_linux_amd64</p>
-<h2 id="创建同意许可协议的文件"><a href="#创建同意许可协议的文件" class="headerlink" title="创建同意许可协议的文件"></a>创建同意许可协议的文件</h2><p>touch .ts3server_license_accepted</p>
-<h2 id="启动服务器-1"><a href="#启动服务器-1" class="headerlink" title="启动服务器"></a>启动服务器</h2><p>.&#x2F;ts3server_startscript.sh start</p>
-<hr>
-<h1 id="🚨-关键步骤：保存管理员令牌"><a href="#🚨-关键步骤：保存管理员令牌" class="headerlink" title="🚨 关键步骤：保存管理员令牌"></a>🚨 关键步骤：保存管理员令牌</h1><p>首次启动时，终端日志中会显示两行极其重要的信息：</p>
-<p>ServerAdmin privilege key created, please use it to gain serveradmin rights for your virtualserver.<br>token&#x3D;xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</p>
-<p><strong>请立即复制并保存这个 <code>token</code>（令牌）</strong>。如果你关闭了终端，将无法找回，只能清空数据重新初始化。</p>
-<hr>
-<h1 id="设置开机自启-Systemd"><a href="#设置开机自启-Systemd" class="headerlink" title="设置开机自启 (Systemd)"></a>设置开机自启 (Systemd)</h1><p>为了确保服务器在重启后自动运行，我们可以将其注册为系统服务。</p>
-<h2 id="创建服务文件-需要-root-权限-："><a href="#创建服务文件-需要-root-权限-：" class="headerlink" title="创建服务文件 (需要 root 权限)："></a><strong>创建服务文件</strong> (需要 <code>root</code> 权限)：</h2><p>sudo nano &#x2F;etc&#x2F;systemd&#x2F;system&#x2F;teamspeak3.service</p>
-<h2 id="粘贴以下配置-注意将-path-to-替换为你的实际绝对路径-："><a href="#粘贴以下配置-注意将-path-to-替换为你的实际绝对路径-：" class="headerlink" title="粘贴以下配置 (注意将 /path/to 替换为你的实际绝对路径)："></a><strong>粘贴以下配置</strong> (注意将 <code>/path/to</code> 替换为你的实际绝对路径)：</h2><p>[Unit]<br>Description&#x3D;TeamSpeak 3 Server<br>After&#x3D;network.target<br>[Service]<br>User&#x3D;teamspeak<br>Group&#x3D;teamspeak<br>WorkingDirectory&#x3D;&#x2F;home&#x2F;teamspeak&#x2F;teamspeak3-server_linux_amd64<br>ExecStart&#x3D;&#x2F;home&#x2F;teamspeak&#x2F;teamspeak3-server_linux_amd64&#x2F;ts3server<br>ExecStop&#x3D;&#x2F;home&#x2F;teamspeak&#x2F;teamspeak3-server_linux_amd64&#x2F;ts3server_startscript.sh stop<br>ExecReload&#x3D;&#x2F;home&#x2F;teamspeak&#x2F;teamspeak3-server_linux_amd64&#x2F;ts3server_startscript.sh restart<br>Restart&#x3D;always<br>RestartSec&#x3D;15<br>[Install]<br>WantedBy&#x3D;multi-user.target</p>
-<h2 id="重载配置并启用："><a href="#重载配置并启用：" class="headerlink" title="重载配置并启用："></a><strong>重载配置并启用</strong>：</h2><p>sudo systemctl daemon-reload<br>sudo systemctl enable teamspeak3<br>sudo systemctl start teamspeak3</p>
-<hr>
-<h1 id="连接与使用"><a href="#连接与使用" class="headerlink" title="连接与使用"></a>连接与使用</h1><p><strong>下载客户端</strong>：从 <a target="_blank" rel="noopener" href="https://teamspeak.com/en/downloads/">TeamSpeak 官网</a> 下载适用于你系统的客户端。</p>
-<p><strong>连接服务器</strong>：打开客户端，点击 <code>Connections</code> -&gt; <code>Connect</code>，输入你的 <strong>服务器 IP 地址</strong>（端口默认 9987，可不填）。</p>
-<p><strong>获取管理员权限</strong>：首次进入频道时，客户端会弹出窗口要求输入 <strong>Token</strong>。粘贴你在第三步保存的令牌，即可获得管理员权限。</p>
-<hr>
-<h1 id="常见问题排查-Troubleshooting"><a href="#常见问题排查-Troubleshooting" class="headerlink" title="常见问题排查 (Troubleshooting)"></a>常见问题排查 (Troubleshooting)</h1><table>
-<thead>
-<tr>
-<th>问题现象</th>
-<th>可能原因与解决方案</th>
-</tr>
-</thead>
-<tbody><tr>
-<td><strong>客户端连接不上</strong></td>
-<td>1. <strong>检查 UDP 9987 端口</strong>是否放行，这是最常见的坑。<br>2. 检查云服务商安全组策略。</td>
-</tr>
-<tr>
-<td><strong>听不到声音&#x2F;语音卡顿</strong></td>
-<td>检查服务器带宽是否跑满，或客户端 Codec 设置是否过高。</td>
-</tr>
-<tr>
-<td><strong>丢失了管理员 Token</strong></td>
-<td>停止服务端，删除 <code>/home/teamspeak/teamspeak3-server_linux_amd64</code> 下的 <code>query_ip_whitelist.txt</code> 和 <code>query_ip_blacklist.txt</code>，重启后控制台会生成新 Token。</td>
-</tr>
-</tbody></table>
-<h1 id="搭建-TeamSpeak-音乐机器人-teamspeak-music-bot"><a href="#搭建-TeamSpeak-音乐机器人-teamspeak-music-bot" class="headerlink" title="搭建 TeamSpeak 音乐机器人 (teamspeak-music-bot)"></a>搭建 TeamSpeak 音乐机器人 (teamspeak-music-bot)</h1><p>有了 TeamSpeak 服务器之后，不妨再给它配上一个“点歌台”。<code>teamspeak-music-bot</code> 是一个功能强大的开源音乐机器人，<a target="_blank" rel="noopener" href="https://github.com/ZHANGTIANYAO1/teamspeak-music-bot">链接</a>，支持从<strong>网易云音乐、QQ音乐、酷狗音乐、哔哩哔哩</strong>等多个平台搜索并播放音乐。它最大的亮点在于提供了一个 YesPlayMusic 风格的 WebUI 控制面板，让你可以通过浏览器轻松管理播放，体验非常接近专业的音乐播放器。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/07/02/teamspeak3%E4%BB%A5%E5%8F%8A%E9%9F%B3%E4%B9%90%E6%9C%BA%E5%99%A8%E4%BA%BA%E6%90%AD%E5%BB%BA/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -342,9 +261,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-07-02 23:15:29 / 修改时间：23:32:35" itemprop="dateCreated datePublished" datetime="2026-07-02T23:15:29+08:00">2026-07-02</time>
+      <time title="创建时间：2026-07-02 23:15:29" itemprop="dateCreated datePublished" datetime="2026-07-02T23:15:29+08:00">2026-07-02</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-04 05:47:09" itemprop="dateModified" datetime="2026-09-04T05:47:09+08:00">2026-09-04</time>
     </span>
 
   
@@ -360,124 +285,14 @@
           <h1 id="从零搭建自托管加密-DNS：AdGuard-Home-完整配置指南"><a href="#从零搭建自托管加密-DNS：AdGuard-Home-完整配置指南" class="headerlink" title="从零搭建自托管加密 DNS：AdGuard Home 完整配置指南"></a>从零搭建自托管加密 DNS：AdGuard Home 完整配置指南</h1><blockquote>
 <p>如果你受够了运营商的 DNS 劫持，想在手机、电脑上全局去广告，又希望保护上网隐私，这篇文章就是为你准备的。</p>
 </blockquote>
-<hr>
-<h2 id="📖-前言"><a href="#📖-前言" class="headerlink" title="📖 前言"></a>📖 前言</h2><p>我花了几天时间，从一台云服务器开始，一步步搭建了自己的加密 DNS 服务。整个过程踩了不少坑：证书申请、端口配置、iOS 描述文件、安卓 DoT 连接失败……最终所有设备都成功跑了起来。</p>
-<p>这篇文章就是完整的操作记录，希望能帮你少走弯路。</p>
-<hr>
-<h2 id="🎯-最终效果"><a href="#🎯-最终效果" class="headerlink" title="🎯 最终效果"></a>🎯 最终效果</h2><ul>
-<li><strong>全屋去广告</strong>：所有连接到 AdGuard Home 的设备自动屏蔽广告</li>
-<li><strong>加密 DNS</strong>：手机蜂窝网络、公共 Wi-Fi 下 DNS 查询全程加密</li>
-<li><strong>跨设备支持</strong>：iPhone、安卓、Windows 全部配置完成</li>
-<li><strong>自动续期</strong>：证书到期自动更新，无需人工干预</li>
-</ul>
-<hr>
-<h2 id="🧱-整体架构"><a href="#🧱-整体架构" class="headerlink" title="🧱 整体架构"></a>🧱 整体架构</h2><figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line">互联网</span><br><span class="line">   │</span><br><span class="line">   ▼</span><br><span class="line">┌─────────────────┐</span><br><span class="line">│  云服务器        │</span><br><span class="line">│  (公网 IP)       │</span><br><span class="line">│  运行 AdGuard Home│</span><br><span class="line">│  监听 443/853 端口│</span><br><span class="line">└─────────────────┘</span><br><span class="line">   │         │</span><br><span class="line">   ▼         ▼</span><br><span class="line"> iPhone    安卓手机   电脑</span><br><span class="line">(DoH/TLS)  (DoH)    (DoH)</span><br></pre></td></tr></table></figure>
-
-<hr>
-<h2 id="第一部分：准备工作"><a href="#第一部分：准备工作" class="headerlink" title="第一部分：准备工作"></a>第一部分：准备工作</h2><h3 id="1-1-域名与服务器"><a href="#1-1-域名与服务器" class="headerlink" title="1.1 域名与服务器"></a>1.1 域名与服务器</h3><ul>
-<li><strong>域名</strong>：我使用的是在 NameSilo 注册的域名</li>
-<li><strong>服务器</strong>：一台有公网 IP 的云服务器（我是阿里云）</li>
-<li><strong>系统</strong>：Ubuntu</li>
-</ul>
-<h3 id="1-2-域名解析"><a href="#1-2-域名解析" class="headerlink" title="1.2 域名解析"></a>1.2 域名解析</h3><p>在 DNS 服务商控制台添加 A 记录：</p>
-<table>
-<thead>
-<tr>
-<th>记录类型</th>
-<th>主机记录</th>
-<th>记录值</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>A</td>
-<td>@</td>
-<td>你的服务器公网 IP</td>
-</tr>
-<tr>
-<td>A</td>
-<td>www</td>
-<td>你的服务器公网 IP</td>
-</tr>
-</tbody></table>
-<hr>
-<h2 id="第二部分：安装-AdGuard-Home"><a href="#第二部分：安装-AdGuard-Home" class="headerlink" title="第二部分：安装 AdGuard Home"></a>第二部分：安装 AdGuard Home</h2><h3 id="2-1-一键安装"><a href="#2-1-一键安装" class="headerlink" title="2.1 一键安装"></a>2.1 一键安装</h3><figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">curl -s -S -L https://raw.githubusercontent.com/AdguardTeam/AdGuardHome/master/scripts/install.sh | sh -s -- -v</span><br></pre></td></tr></table></figure>
-
-<p>安装完成后，访问 <code>http://你的服务器IP:3000</code> 进行初始化设置。</p>
-<h3 id="2-2-设置用户名和密码"><a href="#2-2-设置用户名和密码" class="headerlink" title="2.2 设置用户名和密码"></a>2.2 设置用户名和密码</h3><p>按照网页指引完成设置，记住你设置的管理员账号密码。</p>
-<hr>
-<h2 id="第三部分：申请-SSL-证书"><a href="#第三部分：申请-SSL-证书" class="headerlink" title="第三部分：申请 SSL 证书"></a>第三部分：申请 SSL 证书</h2><h3 id="3-1-为什么需要证书？"><a href="#3-1-为什么需要证书？" class="headerlink" title="3.1 为什么需要证书？"></a>3.1 为什么需要证书？</h3><p>AdGuard Home 启用 DoH&#x2F;DoT 加密必须使用 SSL&#x2F;TLS 证书。我使用 Let’s Encrypt 的免费证书。</p>
-<h3 id="3-2-手动申请证书（首次）"><a href="#3-2-手动申请证书（首次）" class="headerlink" title="3.2 手动申请证书（首次）"></a>3.2 手动申请证书（首次）</h3><p>先通过手动 DNS 验证方式申请：</p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> certbot certonly --manual --preferred-challenges=dns -d 域名</span><br></pre></td></tr></table></figure>
-
-<p>系统会提示你添加 TXT 记录：</p>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">_acme-challenge.域名 TXT &quot;这里是一串验证值&quot;</span><br></pre></td></tr></table></figure>
-
-<p>添加完成后等待生效，按回车继续。证书申请成功，一共有两份。</p>
-<p>⚠️ <strong>注意</strong>：<code>--manual</code> 方式不会自动续期！我们后面会改成自动方式。</p>
-<h3 id="3-3-查看证书内容"><a href="#3-3-查看证书内容" class="headerlink" title="3.3 查看证书内容"></a>3.3 查看证书内容</h3><p>将输出的内容（从 <code>-----BEGIN CERTIFICATE-----</code> 到 <code>-----END CERTIFICATE-----</code>）复制下来。</p>
-<hr>
-<h2 id="第四部分：配置-AdGuard-Home-加密"><a href="#第四部分：配置-AdGuard-Home-加密" class="headerlink" title="第四部分：配置 AdGuard Home 加密"></a>第四部分：配置 AdGuard Home 加密</h2><h3 id="4-1-进入加密设置"><a href="#4-1-进入加密设置" class="headerlink" title="4.1 进入加密设置"></a>4.1 进入加密设置</h3><p>登录 AdGuard Home 管理面板 → <strong>设置</strong> → <strong>加密</strong></p>
-<h3 id="4-2-填写证书"><a href="#4-2-填写证书" class="headerlink" title="4.2 填写证书"></a>4.2 填写证书</h3><table>
-<thead>
-<tr>
-<th>配置项</th>
-<th>填写内容</th>
-</tr>
-</thead>
-<tbody><tr>
-<td>启用加密</td>
-<td>✅ 勾选</td>
-</tr>
-<tr>
-<td>服务器名称</td>
-<td>域名</td>
-</tr>
-<tr>
-<td>证书</td>
-<td>粘贴 <code>fullchain.pem</code> 的全部内容</td>
-</tr>
-<tr>
-<td>私钥</td>
-<td>粘贴 <code>privkey.pem</code> 的全部内容</td>
-</tr>
-<tr>
-<td>HTTPS 端口</td>
-<td><code>443</code>（DoH 端口）</td>
-</tr>
-<tr>
-<td>DNS-over-TLS 端口</td>
-<td><code>853</code>（DoT 端口）</td>
-</tr>
-</tbody></table>
-<blockquote>
-<p>💡 <strong>进阶做法</strong>：填完内容后，可以改为填写文件路径，方便自动续期时自动加载。</p>
-</blockquote>
-<h3 id="4-3-放行端口"><a href="#4-3-放行端口" class="headerlink" title="4.3 放行端口"></a>4.3 放行端口</h3><p><strong>服务器防火墙（如 ufw）：</strong></p>
-<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="built_in">sudo</span> ufw allow 443/tcp</span><br><span class="line"><span class="built_in">sudo</span> ufw allow 853/tcp</span><br><span class="line"><span class="built_in">sudo</span> ufw reload</span><br></pre></td></tr></table></figure>
-
-<p><strong>云服务商安全组</strong>：在控制台添加入站规则，允许 TCP 443 和 853 端口。</p>
-<hr>
-<h2 id="第五部分：各设备端配置"><a href="#第五部分：各设备端配置" class="headerlink" title="第五部分：各设备端配置"></a>第五部分：各设备端配置</h2><h3 id="5-1-iPhone-iPad（通过描述文件）"><a href="#5-1-iPhone-iPad（通过描述文件）" class="headerlink" title="5.1 iPhone &#x2F; iPad（通过描述文件）"></a>5.1 iPhone &#x2F; iPad（通过描述文件）</h3><p><strong>推荐方式</strong>：使用在线工具生成描述文件</p>
-<ol>
-<li>访问 <a target="_blank" rel="noopener" href="https://dns.notjakob.com/">dns.notjakob.com</a></li>
-<li>选择 <strong>DNS-over-HTTPS (DoH)</strong></li>
-<li>DoH server URL 填写：<code>https://域名/dns-query</code></li>
-<li><strong>IPv4&#x2F;IPv6 填写你喜欢的公共DNS</strong></li>
-<li>生成并下载 <code>.mobileconfig</code> 文件</li>
-<li>通过 QQ&#x2F;微信&#x2F;邮件传到 iPhone，iPhone用自带的文件APP另存，并在文件APP里打开，进行安装</li>
-</ol>
-<p><strong>安装路径</strong>：设置 → 通用 → VPN 与设备管理 → 已下载的描述文件</p>
-<h3 id="5-2-安卓手机（推荐-DoH）"><a href="#5-2-安卓手机（推荐-DoH）" class="headerlink" title="5.2 安卓手机（推荐 DoH）"></a>5.2 安卓手机（推荐 DoH）</h3><p>安卓系统内置的“私人 DNS”仅支持 DoT（853 端口），但国内网络环境可能干扰 853 端口。<strong>推荐使用 DoH</strong>。</p>
-<p><strong>使用 Intra 应用（Google 官方开源）：</strong></p>
-<ol>
-<li>在 Google Play 下载 <strong>Intra</strong></li>
-</ol>
-<h3 id="5-3-Windows-电脑"><a href="#5-3-Windows-电脑" class="headerlink" title="5.3 Windows 电脑"></a>5.3 Windows 电脑</h3><p><strong>方法一：系统网络设置（推荐）</strong></p>
-<ol>
-<li>设置 → 网络和 Internet → Wi-Fi&#x2F;以太网</li>
-<li>点击当前网络 → DNS 服务器分配 → 编辑 → 填写你的服务器公网IP</li>
-</ol>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/07/02/adguardHome/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -531,9 +346,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-06-27 15:10:32 / 修改时间：15:11:27" itemprop="dateCreated datePublished" datetime="2026-06-27T15:10:32+08:00">2026-06-27</time>
+      <time title="创建时间：2026-06-27 15:10:32" itemprop="dateCreated datePublished" datetime="2026-06-27T15:10:32+08:00">2026-06-27</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-04 05:47:09" itemprop="dateModified" datetime="2026-09-04T05:47:09+08:00">2026-09-04</time>
     </span>
 
   
@@ -547,7 +368,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p><a target="_blank" rel="noopener" href="https://go-post.sspai.com/post/106131">Pixel升级后 VoLTE 废了？别慌，这份“亲兄弟”救命指南请收好！ - 少数派</a></p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/06/27/20260627Pixel%E6%89%8B%E6%9C%BA%E4%B8%AD%E5%9B%BD%E5%A4%A7%E9%99%86%E6%95%B0%E6%8D%AE%E4%B8%8A%E7%BD%91%E6%95%99%E7%A8%8B/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -609,7 +437,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2026-07-15 23:43:33" itemprop="dateModified" datetime="2026-07-15T23:43:33+08:00">2026-07-15</time>
+      <time title="修改时间：2026-09-04 05:47:11" itemprop="dateModified" datetime="2026-09-04T05:47:11+08:00">2026-09-04</time>
     </span>
 
   
@@ -623,71 +451,16 @@
     
     <div class="post-body" itemprop="articleBody">
           <h3 id="第一部分：云服务器配置（搭建-Moon-中转节点）"><a href="#第一部分：云服务器配置（搭建-Moon-中转节点）" class="headerlink" title="第一部分：云服务器配置（搭建 Moon 中转节点）"></a>第一部分：云服务器配置（搭建 Moon 中转节点）</h3><ol>
-<li><p><strong>租一台有公网 IP 的云服务器</strong>（推荐阿里云，最便宜有公网IP就行，系统选 Ubuntu）。</p>
-</li>
-<li><p>开放服务器的UDP 9993端口。</p>
-</li>
-<li><p><strong>连接服务器</strong>：登录服务器，依次执行以下命令：</p>
-</li>
+<li><strong>租一台有公网 IP 的云服务器</strong>（推荐阿里云，最便宜有公网IP就行，系统选 Ubuntu）。</li>
 </ol>
-<figure class="highlight plaintext"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br></pre></td><td class="code"><pre><span class="line">    # 安装 ZeroTier</span><br><span class="line"></span><br><span class="line">    curl -s https://install.zerotier.com | sudo bash</span><br><span class="line"></span><br><span class="line">    # 进入 ZeroTier 配置目录</span><br><span class="line"></span><br><span class="line">    cd /var/lib/zerotier-one</span><br><span class="line"></span><br><span class="line">    # 生成 moon.json 配置文件</span><br><span class="line"></span><br><span class="line">    sudo zerotier-idtool initmoon identity.public &gt; moon.json</span><br><span class="line"></span><br><span class="line">    # 编辑 moon.json，找到 &quot;stableEndpoints&quot;: [] 这一行，改成你的服务器公网 IP</span><br><span class="line"></span><br><span class="line">    sudo vi moon.json</span><br><span class="line"></span><br><span class="line">    # 示例：&quot;stableEndpoints&quot;: [&quot;123.123.123.123/9993&quot;]</span><br><span class="line"></span><br><span class="line">    # 根据 moon.json 生成 .moon 签名文件</span><br><span class="line"></span><br><span class="line">    sudo zerotier-idtool genmoon moon.json</span><br><span class="line"></span><br><span class="line">    # 创建 moons.d 目录并移动文件</span><br><span class="line"></span><br><span class="line">    sudo mkdir -p moons.d</span><br><span class="line"></span><br><span class="line">    sudo mv *.moon moons.d/</span><br><span class="line"></span><br><span class="line">    # 重启 ZeroTier 服务</span><br><span class="line"></span><br><span class="line">    sudo systemctl restart zerotier-one</span><br><span class="line">    # 记下服务器的 Node ID（例如 `12abcdef34`）</span><br><span class="line">    </span><br><span class="line">    sudo zerotier-cli status</span><br></pre></td></tr></table></figure>
-
-<h3 id="第二部分：本地被控电脑配置"><a href="#第二部分：本地被控电脑配置" class="headerlink" title="第二部分：本地被控电脑配置"></a>第二部分：本地被控电脑配置</h3><ol>
-<li><p><strong>安装 ZeroTier 客户端</strong>（官网下载）。</p>
-</li>
-<li><p><strong>加入你创建的虚拟网络</strong>：</p>
-<ol>
-<li>在 ZeroTier 官网创建 Network，获得 16 位 Network ID。</li>
-<li>你的电脑上右键 ZeroTier 图标 → <strong>Join Network</strong> → 输入 Network ID。</li>
-</ol>
-</li>
-<li><p><strong>添加 Moon 节点</strong>（让你的电脑优先通过你的服务器寻找朋友）：</p>
-<ol>
-<li>以管理员身份打开命令提示符，进入 ZeroTier 安装目录（默认 <code>C:\Program Files (x86)\ZeroTier\One\</code>）。</li>
-<li>执行：<code>zerotier-cli orbit &lt;你的服务器NodeID&gt; &lt;你的服务器NodeID&gt;</code>（两次输入相同 ID）。</li>
-</ol>
-</li>
-<li><p><strong>在 ZeroTier 官网授权</strong>：将你和朋友的设备都勾选允许加入网络。</p>
-</li>
-<li><p><strong>安装 Parsec</strong>，登录账号，并确保你的电脑设置为 <strong>“主机”（Host）</strong> 模式（默认就是）。</p>
-</li>
-<li><p>（可选）设置网络优先级，让 Parsec 优先走 ZeroTier 虚拟网卡。</p>
-<ol>
-<li><p>按下键盘上的 <code>Win</code> + <code>R</code> 键，在弹出的“运行”对话框中输入 <code>ncpa.cpl</code>，然后点击“确定”。</p>
-</li>
-<li><p>在打开的“网络连接”窗口中，找到名为 <strong><code>ZeroTier One</code></strong> 的虚拟网卡。右键点击它，选择 <strong>“属性”</strong>。</p>
-<ol>
-<li><p>在弹出的属性窗口中：</p>
-<p>    找到并双击 Internet 协议版本 4 (TCP&#x2F;IPv4)。</p>
-<p>    在新窗口中，点击下方的 <strong>“高级”</strong> 按钮。</p>
-</li>
-</ol>
-</li>
-<li><p>修改接口跃点数</p>
-<ol>
-<li>在“高级TCP&#x2F;IP设置”窗口中，<strong>取消勾选</strong>“<strong>自动跃点</strong>”。</li>
-<li>在“<strong>接口跃点数</strong>”输入框中，手动输入一个很小的数字，比如 <strong><code>1</code></strong>。</li>
-<li>点击“确定”保存设置。</li>
-</ol>
-</li>
-<li><p>重启电脑</p>
-</li>
-</ol>
-</li>
-</ol>
-<h3 id="第三部分：你的朋友（控制端）"><a href="#第三部分：你的朋友（控制端）" class="headerlink" title="第三部分：你的朋友（控制端）"></a>第三部分：你的朋友（控制端）</h3><ol>
-<li><strong>安装 ZeroTier 客户端</strong>。</li>
-<li><strong>加入同一个虚拟网络</strong>：输入你提供的 <strong>Network ID</strong>。</li>
-<li><strong>添加同一个 Moon 节点</strong>：<ol>
-<li>同样以管理员身份打开命令提示符，进入 ZeroTier 安装目录。</li>
-<li>执行：<code>zerotier-cli orbit &lt;你的服务器NodeID&gt; &lt;你的服务器NodeID&gt;</code>（和之前执行的命令完全一样）。</li>
-</ol>
-</li>
-<li><strong>安装 Parsec</strong>，登录同一个账号（或互加好友）。</li>
-<li>（可选同上）设置网络优先级，让 Parsec 优先走 ZeroTier 虚拟网卡。</li>
-<li><strong>连接你的电脑</strong>：在 Parsec 界面中，你的电脑会出现在列表中，点击即可远程连接并开始联机。</li>
-</ol>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/06/25/%E8%BF%9C%E7%A8%8B%E6%9C%AC%E5%9C%B0%E5%A4%9A%E4%BA%BA%E6%B8%B8%E6%88%8FzeroTier-parsec/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -741,9 +514,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-06-21 12:22:15 / 修改时间：12:30:27" itemprop="dateCreated datePublished" datetime="2026-06-21T12:22:15+08:00">2026-06-21</time>
+      <time title="创建时间：2026-06-21 12:22:15" itemprop="dateCreated datePublished" datetime="2026-06-21T12:22:15+08:00">2026-06-21</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-04 05:47:11" itemprop="dateModified" datetime="2026-09-04T05:47:11+08:00">2026-09-04</time>
     </span>
 
   
@@ -757,12 +536,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>本体+DLC，全程多人通关。</p>
-<p>非常优秀高质量的一款游戏。</p>
-<p>最值得称赞的是画风，有别于市面上常见的游戏，茶杯头的画风独树一帜，非常具有辨识度。在我个人看来，算是非常美观且生动的。</p>
-<p>弹幕也能看出来是有设计过的，能够对玩家进行考验与互动，特别的格挡机制，也给游戏增添了别样的韵味。唯一的缺点是，有些初看是弹幕，但实际上只是场景特效，在初遇时会难以区分。</p>
-<p>多人方面，互救带来的乐趣与节目效果还算不错。但除此之外，并没有更进一步的地方，有点遗憾。steam自带的远程同乐，并不算多好的选择，特别是在中国大陆境内。我个人推荐的方式是zeroTier + parsec，这种方式需要你租一个便宜的有公网IP的服务器，具体细节可通过AI查询。</p>
-<p>剧情方面，整体符合画风与基调，中等偏上，无功无过，并不足以成为加分项。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/06/21/%E8%8C%B6%E6%9D%AF%E5%A4%B4/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -816,9 +597,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-06-21 12:15:59 / 修改时间：12:21:59" itemprop="dateCreated datePublished" datetime="2026-06-21T12:15:59+08:00">2026-06-21</time>
+      <time title="创建时间：2026-06-21 12:15:59" itemprop="dateCreated datePublished" datetime="2026-06-21T12:15:59+08:00">2026-06-21</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-04 05:47:10" itemprop="dateModified" datetime="2026-09-04T05:47:10+08:00">2026-09-04</time>
     </span>
 
   
@@ -832,10 +619,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>好玩！</p>
-<p>肉鸽带来的无尽可能，再加上各种各样规则碰撞在一起形成的化学反应，令每一把自然形成的卡组都有着不同程度的爽感。</p>
-<p>无论是当区蠕动，还是爽局平推，都能带来不同程度的乐趣。</p>
-<p>最好玩的还当属多人模式了，令杀戮尖塔的游戏体验上升了不仅一个台阶，多人的讨论与卡牌联动。爽局与区局的互相分享与承担。这些都令游戏的体验维度增加了，给人予丰富的游戏体验。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/06/21/%E6%9D%80%E6%88%AE%E5%B0%96%E5%A1%942/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -889,9 +680,15 @@
         <i class="far fa-calendar"></i>
       </span>
       <span class="post-meta-item-text">发表于</span>
-      
 
-      <time title="创建时间：2026-06-21 12:07:36 / 修改时间：12:15:42" itemprop="dateCreated datePublished" datetime="2026-06-21T12:07:36+08:00">2026-06-21</time>
+      <time title="创建时间：2026-06-21 12:07:36" itemprop="dateCreated datePublished" datetime="2026-06-21T12:07:36+08:00">2026-06-21</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">更新于</span>
+      <time title="修改时间：2026-09-04 05:47:11" itemprop="dateModified" datetime="2026-09-04T05:47:11+08:00">2026-09-04</time>
     </span>
 
   
@@ -905,9 +702,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>固定的规则加上各种各样不同的节奏，在带来爽快的同时，又有着值得回味的剧情，实在是一部不错的作品。</p>
-<p>并且即使是没玩过此类型游戏的新手，也能很快入手。</p>
-<p>剧情又好，玩法又好，音乐又好，全都好。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2026/06/21/%E8%8A%82%E5%A5%8F%E5%8C%BB%E7%94%9F/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -969,7 +771,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2025-08-20 03:10:40" itemprop="dateModified" datetime="2025-08-20T03:10:40+08:00">2025-08-20</time>
+      <time title="修改时间：2026-09-04 05:47:11" itemprop="dateModified" datetime="2026-09-04T05:47:11+08:00">2026-09-04</time>
     </span>
 
   
@@ -983,7 +785,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>追逐梦想的感动，让人能够了解日本动画制作流程的一部优秀动画。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2025/05/03/%E7%99%BD%E7%AE%B1TV-%E5%89%A7%E5%9C%BA%E7%89%88/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1045,7 +854,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2025-08-20 03:11:31" itemprop="dateModified" datetime="2025-08-20T03:11:31+08:00">2025-08-20</time>
+      <time title="修改时间：2026-09-04 05:47:11" itemprop="dateModified" datetime="2026-09-04T05:47:11+08:00">2026-09-04</time>
     </span>
 
   
@@ -1059,7 +868,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>很早就看完了，今日又重看了一次，藤本树真的是个天才，颠得恰到好处。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2025/05/03/%E7%82%8E%E6%8B%B3/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
@@ -1121,7 +937,7 @@
         <i class="far fa-calendar-check"></i>
       </span>
       <span class="post-meta-item-text">更新于</span>
-      <time title="修改时间：2025-08-20 03:12:31" itemprop="dateModified" datetime="2025-08-20T03:12:31+08:00">2025-08-20</time>
+      <time title="修改时间：2026-09-04 05:47:11" itemprop="dateModified" datetime="2026-09-04T05:47:11+08:00">2026-09-04</time>
     </span>
 
   
@@ -1135,7 +951,14 @@
     
     <div class="post-body" itemprop="articleBody">
           <p>还不错的一部电波系漫画，几个有趣的故事串联在一起，讲述了作者对人生的看法与想法。</p>
-
+          <!--noindex-->
+            <div class="post-button">
+              <a class="btn" href="/2025/05/03/%E6%BB%A1%E6%98%AF%E7%A9%BA%E8%99%9A%E4%B9%8B%E7%89%A9/#more" rel="contents">
+                阅读全文 &raquo;
+              </a>
+            </div>
+          <!--/noindex-->
+        
       
     </div>
 
